@@ -1,0 +1,52 @@
+<resources>
+    <string name="home_recovery">Home and recovery</string>
+    <string name="home_is_default">KoboStyle is the default Home</string>
+    <string name="home_is_app">Currently used as an ordinary app</string>
+    <string name="open_original_home">Open original Home</string>
+    <string name="home_settings">Default Home settings / restore original Home</string>
+    <string name="use_as_home">Use KoboStyle as Home</string>
+    <string name="home_recovery_confirm">First verify that Open original Home works and find the system default Home settings yourself.\n\nContinue, then select KoboStyle in system settings. To restore, select your original Home on the same settings page. Opening the original Home alone does not change the default.</string>
+    <string name="home_recovery_ready">Recovery verified, continue</string>
+    <string name="home_original_missing">No working original Home could be verified. Check the system default Home settings first.</string>
+    <string name="home_settings_missing">System Home settings are unavailable. Keep using ordinary app mode.</string>
+    <string name="my_books">My Books</string>
+    <string name="book_count">%1$d books</string>
+    <string name="opened_on">Opened %1$s</string>
+    <string name="book_options">Book options ⋯</string>
+    <string name="open_book">Read now</string>
+    <string name="room_settings">Reading settings</string>
+    <string name="invite_books">Find a home for your books</string>
+    <string name="make_it_yours">Make room for reading</string>
+    <string name="search_books">Search books</string>
+    <string name="search_hint">Title or author</string>
+    <string name="search_action">Search</string>
+    <string name="search_results">Search: %1$s</string>
+    <string name="show_all">Show all books</string>
+    <string name="no_matches">No matching books. Try another title or author.</string>
+    <string name="battery_label">Battery %1$s</string>
+    <string name="volume_paging_on">Physical page keys: on</string>
+    <string name="volume_paging_off">Physical page keys: off</string>
+    <string name="page_direction_normal">Page key direction: normal</string>
+    <string name="page_direction_reversed">Page key direction: reversed</string>
+    <string name="page_keys_note">When enabled, volume keys page through Home and Library only. NeoReader and other apps keep their own key behavior. Reverse the direction if preferred.</string>
+    <string name="app_name">KoboStyle Library</string>
+    <string name="home">Home</string><string name="library">My Books</string><string name="apps">Apps</string><string name="settings">More</string>
+    <string name="continue_reading">Continue reading</string><string name="recent">Recently opened</string>
+    <string name="empty">Your library is ready. Add EPUB/PDF books or a book folder in Library.</string>
+    <string name="no_recent">No open events yet. Choose a book below.</string><string name="bookshelf">My bookshelf</string>
+    <string name="add_folder">Add folder</string><string name="add_files">Add books</string><string name="scan">Rescan</string><string name="cancel">Cancel scan</string>
+    <string name="scanning">Scanning — Books: %1$d; Failures: %2$d</string><string name="scan_done">Scan finished — Books: %1$d</string>
+    <string name="scan_cancelled">Scan cancelled. Imported books are retained.</string>
+    <string name="source_error">Source unavailable. Select the folder/book again to reauthorize, or reconnect the card.</string>
+    <string name="source_scan_error">Some folders could not be scanned. Check storage availability and rescan.</string>
+    <string name="temporary_grant">Persistent read access unavailable. Select a source that supports SAF grants.</string>
+    <string name="never_opened">Not opened yet</string><string name="last_opened">Last opened: %1$s</string><string name="unknown_author">Unknown author</string><string name="fallback_cover">No cover</string>
+    <string name="unavailable">Source unavailable / reauthorize</string><string name="metadata_error">Metadata unavailable; using filename and placeholder</string>
+    <string name="open_failed">Could not open. Check source access and reader availability.</string><string name="no_reader">No compatible reader found.</string>
+    <string name="chooser">Choose a reader (compatibility unverified)</string><string name="choose_reader">Other readers</string>
+    <string name="system_settings">System settings</string><string name="wifi_settings">Wi-Fi settings</string>
+    <string name="settings_note">Open events belong to this app and are not reading progress. Cancelling the chooser does not update them.\n\nHome and recovery provides access to the original Home and system default Home settings. Keep the stock BOOX launcher installed.\n\nUse BOOX per-app optimization for E Ink refresh settings.</string>
+    <string name="visible_apps">Visible apps (system filtering may apply)</string><string name="status">Battery %1$s · Wi-Fi %2$s</string>
+    <string name="connected">connected</string><string name="disconnected">disconnected</string><string name="unknown">unknown</string>
+    <string name="sources">Sources: %1$d; reauthorization needed: %2$d</string><string name="scan_limit">Safety scan limit reached. Choose a smaller book folder.</string>
+</resources>

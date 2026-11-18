@@ -1,0 +1,7 @@
+patch:
+  preset_keyboards/bopomofo/lock: true
+  style/key_font: ""
+  style/label_font: ""
+  style/candidate_font: ""
+  style/comment_font: ""
+  style/text_font: ""

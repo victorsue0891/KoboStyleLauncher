@@ -1,0 +1,4 @@
+<resources>
+    <item name="shelf" type="id" />
+    <item name="search_input" type="id" />
+</resources>

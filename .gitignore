@@ -1,0 +1,39 @@
+.tools/
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.log
+
+# Local archives, references, device data, and generated packages
+/BOOX_Leaf2_KoboStyle_Codex_Kit_*.zip
+/kobo-ui-example.png
+*.apk
+*.aab
+*.apks
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+
+# Credentials and signing material
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+secrets.properties
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
