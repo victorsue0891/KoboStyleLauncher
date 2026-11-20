@@ -1,5 +1,7 @@
 # KoboStyle Launcher — Product & Engineering Specification
 
+2026-11-20 extension: the user requested the Cat Librarian tab and explicitly included OpenAI integration. Apps now lives under More. AI is opt-in, uses a device-entered encrypted key and candidate metadata only, and preserves the existing Room v2/SAF/reader/HOME behavior. The current implementation, privacy boundary, host results and pending device gates are documented in [Cat Librarian development](docs/LIBRARIAN_2026-11-20.md). The baseline phases and device results below are historical; no device was connected for this extension.
+
 Version: 1.0 (2026-11-14)\
 Target: BOOX Leaf2, Android 11, 7-inch E Ink, 2 GB RAM\
 Language: Traditional Chinese UI (default); English fallback\

@@ -1,5 +1,7 @@
 # P0 裝置與環境報告
 
+2026-11-20 喵館員開發：使用者明確告知 Leaf2 尚未連接。本輪僅確認主機 JDK 17、SDK 36、build-tools 35.0.0、Gradle 8.13 與 adb 工具，完成本機建置及 mock 測試；沒有執行裝置診斷或任何 ADB 命令。新功能尚未證實可在 Leaf2 執行，HOME／閱讀器／Keystore 目前狀態待接機觀察。詳見 [喵館員待實測清單](LIBRARIAN_2026-11-20.md)。下方實機數據保留為歷史觀察。
+
 2026-11-18 分類功能開發前重新執行唯讀診斷：一台已授權 Leaf2，Android 11／API 30，1264×1680／300 dpi，0 個診斷命令失敗；預設 HOME 為 KoboStyle HomeEntry，原廠 HOME 仍可解析。升級後再次確認 HOME 與同文輸入法未變更。分類與 UI 實機驗證詳見 [分類紀錄](CATEGORIES_2026-11-18.md)。
 
 2026-11-16 後續使用者完成手動復原示範並核准，已透過 HOME_SETTINGS 設定 `org.kobostyle.launcher/.ui.HomeEntry` 為預設桌面。原廠 `ContentBrowser` 可由系統 UI 恢復；重開機保留預設，但 BOOX 仍先顯示原廠介面。刻意崩潰後系統清除預設、顯示兩桌面選擇器，已實測恢復原廠並再設回 KoboStyle。下方 P0 的 HOME 觀察為歷史狀態，最新證據見 [HOME 設定紀錄](HOME_SETUP_2026-11-16.md)。

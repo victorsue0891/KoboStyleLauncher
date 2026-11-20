@@ -1,5 +1,11 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-20 喵館員與 OpenAI
+
+`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 通過，79 項 JVM／Robolectric 測試，0 failures／errors／skipped；Lint 0 errors／43 warnings；APK 簽章驗證通過。包含狀態機、20 本合成書介面流程、8,166 筆候選篩選、橫向字級 1.3、加密重存／竄改、取消、API 錯誤與回應驗證。網路全部使用 mock，不傳送真實 API 請求。新增 11 個 Lint warnings 為 ViewConstructor 1、UseKtx 5、SetTextI18n 5；未新增 error 或用 baseline 隱藏警告。
+
+Leaf2 本輪未連線，未執行 ADB 或安裝。Keystore instrumentation 測試已建置但未執行，真實 API、喵館員開書、電子紙與實體鍵回歸均待實機。完整命令、已完成／未完成／阻礙與接機程序見 [喵館員紀錄](LIBRARIAN_2026-11-20.md)。以下日期為歷史結果。
+
 ## 2026-11-18 書籍分類
 
 首頁分類、按作者瀏覽／搜尋、分類返回與旋轉狀態已實作。`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 通過，43 項 JVM 測試無失敗，Lint 0 errors／32 warnings。`CategoryUiAcceptanceTest` 與 `ReaderUiAcceptanceTest` 實機 `OK (2 tests)`，使用獨立合成書庫。真實書庫升級前後 8,166 本的原有欄位及四個來源完全一致；沒有清空索引或重掃整個書庫。完整命令與限制見 [分類驗收](CATEGORIES_2026-11-18.md)。

@@ -16,12 +16,13 @@
 
 - 黑白首頁、可調欄數書封網格、搜尋、最近開啟與可選實體鍵翻頁已實作。
 - 首頁「書籍分類」提供 11 個類別與作者瀏覽，依 `[類別]-書名-作者名.epub/pdf` 分類；作者清單支援搜尋，另保留全部書籍及未分類。詳見 [分類功能與驗收](docs/CATEGORIES_2026-11-18.md)。
+- 第三分頁改為「喵館員」，「應用程式」移至「更多」。墨喵提供六種靜態表情、離線對話選書、主題推薦；可自行啟用 OpenAI 並在裝置輸入 Key。API 僅傳最多 20 本候選書目與當次需求，金鑰以 Android Keystore 加密，失敗可回退離線。詳見 [喵館員開發與驗收](docs/LIBRARIAN_2026-11-20.md)。
 - 已在 Leaf2／Android 11 驗證 SAF 匯入、NeoReader 開啟合成 EPUB／PDF、microSD 拔插與授權恢復。
 - 大型書庫修復後，microSD Books 的 8,141 本 EPUB／PDF 全數入庫，補入原先漏掉的 4,049 本；含驗收書全庫 8,166 本。162 本使用中繼資料回退，不代表每本都已實際開啟。詳 [掃描修復](docs/SCAN_FIX_2026-11-17.md)。
-- 最近應用程式驗證為 43 項 JVM 測試通過、Lint 0 errors／32 warnings；分類與既有介面實機測試 2/2 通過。歷史與限制見 [測試紀錄](docs/TEST_PLAN.md)。
+- 最新主機驗證為 79 項 JVM 測試通過、Lint 0 errors／43 warnings，主程式與測試 APK 均建置成功。喵館員尚未安裝到 Leaf2，真實 API 與裝置 Keystore／電子紙測試待接機；先前分類與既有介面實機測試 2/2 通過。歷史與限制見 [測試紀錄](docs/TEST_PLAN.md)。
 - 繁體注音以另外安裝並配置同文輸入法驗證；鍵盤與字典不包含在本 App。詳 [注音輸入紀錄](docs/INPUT_METHOD_2026-11-17.md)。
 
-保留 BOOX NeoReader 與原廠桌面。沒有 root、ROM 修改、私有資料庫存取、網路權限或全檔案權限。最新版本提供預設停用、需手動啟用的 HOME 入口及「更多 → 桌面與復原」；安裝／一般啟動不會變更預設桌面。使用者完成手動復原示範並核准後，已透過系統 UI 將 Leaf2 設為 KoboStyle 預設桌面；Home／Back、原廠復原、故障選擇器、重開機保留預設與 PDF 開書已驗證。BOOX 開機仍先顯示原廠介面，按一次 Home 才進入 KoboStyle；刻意崩潰後系統會重新要求選桌面。詳 [HOME 設定紀錄](docs/HOME_SETUP_2026-11-16.md)。長期待機尚未驗證，詳見 [測試紀錄](docs/TEST_PLAN.md)。
+保留 BOOX NeoReader 與原廠桌面。沒有 root、ROM 修改、其他 App 私有資料庫存取或全檔案權限。喵館員新增 INTERNET 權限，但 AI 預設關閉、只在使用者啟用並要求推薦時連線。最新版本提供預設停用、需手動啟用的 HOME 入口及「更多 → 桌面與復原」；安裝／一般啟動不會變更預設桌面。使用者完成手動復原示範並核准後，已透過系統 UI 將 Leaf2 設為 KoboStyle 預設桌面；Home／Back、原廠復原、故障選擇器、重開機保留預設與 PDF 開書已驗證。BOOX 開機仍先顯示原廠介面，按一次 Home 才進入 KoboStyle；刻意崩潰後系統會重新要求選桌面。詳 [HOME 設定紀錄](docs/HOME_SETUP_2026-11-16.md)。長期待機尚未驗證，詳見 [測試紀錄](docs/TEST_PLAN.md)。
 
 ## 建置（Windows PowerShell）
 
@@ -34,7 +35,7 @@ cd KoboStyleLauncher
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test_diagnose_device.ps1
 ```
 
-首次需連網下載建置相依套件；App 本身離線運作。Gradle wrapper JAR 與啟動腳本已納入專案，Gradle 發行包以 SHA-256 驗證。`.tools` 不隨儲存庫提供；只有已自行建立該目錄結構的開發環境才使用 `. .\scripts\use_local_tools.ps1`，它只調整當前 PowerShell 的環境變數。
+首次需連網下載建置相依套件；書庫與離線館員可離線運作，選用 OpenAI 推薦需網路及自行提供 API Key。Gradle wrapper JAR 與啟動腳本已納入專案，Gradle 發行包以 SHA-256 驗證。`.tools` 不隨儲存庫提供；只有已自行建立該目錄結構的開發環境才使用 `. .\scripts\use_local_tools.ps1`，它只調整當前 PowerShell 的環境變數。
 
 固定版本：AGP 8.13.2、Gradle 8.13、Kotlin 2.2.21、KSP 2.2.21-2.0.4、Room 2.8.4、minSdk 30、compileSdk/targetSdk 36。採 API 36 的穩定相容工具組，沒有為繞過權限而降低 target。AGP/JDK/Gradle 相容性依據：[Android 官方版本說明](https://developer.android.com/build/releases/agp-8-13-0-release-notes)。
 
@@ -77,7 +78,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy_debug.ps1
 - 授權失效、來源遺失或 SD 拔除會顯示不可用／重新授權。沒有自動修復外部權限、複製書籍或清除原始檔案。
 - 「上次開啟」是送出 intent 或 chooser 選定處理器的時間，沒有取得閱讀進度或成功載入證明。取消 chooser 不記錄；App 在 chooser 期間被系統銷毀可能遺失事件。
 - 閱讀器 capability 查詢不等於實際相容性。沒有硬編碼 NeoReader 元件；預設處理器失敗時可按「其他閱讀器」。沒有 handler 時顯示錯誤。
-- Apps 只顯示 PackageManager 可見的啟動活動；不是所有安裝套件清單。Wi-Fi／電量只在返回前景時取樣，不讀 SSID、不持續輪詢。
+- 「更多 → 應用程式」只顯示 PackageManager 可見的啟動活動；不是所有安裝套件清單。Wi-Fi／電量只在返回前景時取樣，不讀 SSID、不持續輪詢。
 - 首頁／書庫支援標準 Page Up／Page Down。Leaf2 本次實體按鍵確認送出音量減／加事件；可在設定開啟「實體鍵翻頁」並切換一般／反向，立即移動約 90% 可視高度。新安裝預設關閉，不更改 BOOX 全域按鍵或 NeoReader 設定。
 - E Ink controller 為 no-op；不宣稱支援 BOOX SDK 或全螢幕刷新。實體按鍵以本次觀察到的標準 Android 音量事件實作可選對應。XML theme + 原生 Views/RecyclerView、關閉 item animator／overscroll／ripple；長期殘影與效能統計仍待量測。
 
