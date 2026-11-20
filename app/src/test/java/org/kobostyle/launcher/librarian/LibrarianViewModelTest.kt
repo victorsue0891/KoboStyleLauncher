@@ -29,7 +29,7 @@ class LibrarianViewModelTest {
         runBlocking { repeat(20) { db.library().index(sampleBook(it)) } }
         val prefs = AiPreferences(app.getSharedPreferences("vm-ai-test", 0).apply { edit().clear().commit() })
         model = LibrarianViewModel(LibraryRepository(app, db.library()), prefs, FakeVault(null),
-            CuratorService(prefs, FakeVault(null), CuratorTransport { _, _ -> networkCalls++; error("No API") }, { false }), readable)
+            CuratorService(prefs, FakeVault(null), CuratorTransport { _, _ -> networkCalls++; error("No API") }, { false }), readable = readable)
     }
     private fun start() { model.dispatch(DialogueAction.QUERY, "故事"); model.dispatch(DialogueAction.OFFLINE) }
     private fun await(condition: () -> Boolean) {
@@ -61,6 +61,18 @@ class LibrarianViewModelTest {
         setup { it.identity == sampleBook(17).identity }
         start(); await { model.state.value.stage == DialogueStage.CARDS }
         assertEquals(listOf(sampleBook(17).identity), model.state.value.result!!.cards.map { it.book.identity })
+        assertEquals(0, networkCalls)
+    }
+    @Test fun acceptanceDocumentsNeverReachCandidateReadOrRecommendation() {
+        val checked = java.util.concurrent.CopyOnWriteArrayList<String>()
+        setup { checked += it.identity; true }
+        val fixture = sampleBook(99).copy(uri = "content://com.android.externalstorage.documents/document/fixture",
+            documentId = "primary:Download/KoboStyleAcceptance-20261115/valid/Acceptance-EPUB-01.epub")
+        runBlocking { db.library().index(fixture) }
+        start(); await { model.state.value.stage == DialogueStage.CARDS }
+        val result = model.state.value.result!!
+        assertFalse(checked.contains(fixture.identity)); assertFalse(result.cards.any { it.book.identity == fixture.identity })
+        assertEquals(20, result.indexedBooks); assertEquals(20, result.checkedCandidates)
         assertEquals(0, networkCalls)
     }
 }

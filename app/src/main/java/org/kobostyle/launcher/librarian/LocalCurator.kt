@@ -4,7 +4,13 @@ import org.kobostyle.launcher.data.books.BookFilename
 import org.kobostyle.launcher.data.db.Book
 
 object LocalCurator {
-    fun rank(books: List<Book>, choice: Choice): List<Book> {
+    /** Only the two reserved, previously created acceptance folders; never infer from a book title. */
+    fun isAcceptanceFixture(book: Book): Boolean {
+        if (!book.uri.startsWith("content://com.android.externalstorage.documents/")) return false
+        val path = book.documentId.substringAfter(':', "")
+        return path.startsWith("Download/KoboStyleAcceptance-20261115/") || path.startsWith("KoboStyleCardTest-20261115/")
+    }
+    fun rank(books: List<Book>, choice: Choice, includeAcceptanceBooks: Boolean = false): List<Book> {
         val categories = when (choice.mood) {
             "relax" -> setOf("小說", "文學", "休閒旅遊")
             "learn" -> setOf("科普", "教育", "語言", "數學", "商管", "理財")
@@ -14,6 +20,7 @@ object LocalCurator {
         val query = choice.query.trim()
         val words = query.split(Regex("[\\s，、,；;。]+" )).filter { it.length >= 2 }
         val sorted = books.asSequence().filter { it.scanStatus != "unavailable" && it.uri.startsWith("content://") }
+            .filter { includeAcceptanceBooks || !isAcceptanceFixture(it) }
             .distinctBy { it.identity }.map { book ->
                 val name = BookFilename.parse(BookFilename.name(book))
                 val text = listOf(book.title, name.title.orEmpty(), book.author, name.author.orEmpty(), name.category.orEmpty()).joinToString(" ")

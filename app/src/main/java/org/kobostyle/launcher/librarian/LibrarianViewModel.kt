@@ -18,6 +18,7 @@ class LibrarianViewModel(
     val preferences: AiPreferences,
     private val vault: KeyVault,
     private val service: CuratorService,
+    private val includeAcceptanceBooks: Boolean = false,
     private val readable: suspend (Book) -> Boolean
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DialogueState())
@@ -43,10 +44,10 @@ class LibrarianViewModel(
         work = viewModelScope.launch {
             try {
                 val books = repository.dao.observeBooks().first()
-                val ranked = withContext(Dispatchers.Default) { LocalCurator.rank(books, choice).take(60) }
+                val ranked = withContext(Dispatchers.Default) { LocalCurator.rank(books, choice, includeAcceptanceBooks) }
                 val candidates = withContext(Dispatchers.IO) {
                     val available = mutableListOf<Book>()
-                    for (book in ranked) {
+                    for (book in ranked.take(60)) {
                         ensureActive()
                         val ok = try { readable(book) } catch (e: CancellationException) { throw e } catch (_: Exception) { false }
                         if (ok) available += book
@@ -55,6 +56,7 @@ class LibrarianViewModel(
                     available
                 }
                 val result = withContext(Dispatchers.IO) { service.curate(candidates, choice, online) }
+                    .copy(indexedBooks = ranked.size, checkedCandidates = candidates.size)
                 if (generation == requestGeneration) mutableState.value = state.value.copy(stage = DialogueStage.CARDS, result = result, index = 0)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {

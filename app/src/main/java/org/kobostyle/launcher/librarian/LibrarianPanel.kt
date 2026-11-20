@@ -73,6 +73,9 @@ class LibrarianPanel(context: Context, private val action: (DialogueAction, Stri
         }
         body.addView(text(mode, 14f))
         if (state.stage in setOf(DialogueStage.CARDS, DialogueStage.DETAIL, DialogueStage.CONFIRM)) {
+            state.result?.let { result -> result.indexedBooks?.let { count ->
+                body.addView(text("本機館藏：$count 本 · 本次確認可讀：${result.checkedCandidates} 本", 14f))
+            } }
             notice(state.result?.notice.orEmpty()).takeIf { it.isNotEmpty() }?.let { body.addView(text(it, 16f)) }
             state.card?.let { card ->
                 body.addView(text("${state.index + 1} / ${state.result!!.cards.size}  ·  ${card.book.title}", 22f).apply { typeface = Typeface.DEFAULT_BOLD })

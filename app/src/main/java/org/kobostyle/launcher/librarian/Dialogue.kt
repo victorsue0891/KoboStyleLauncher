@@ -7,7 +7,8 @@ enum class DialogueStage { WELCOME, MOOD, DURATION, PREFERENCE, THEMES, CANDIDAT
 enum class DialogueAction { CHOOSE, MOOD, DURATION, PREFERENCE, THEMES, THEME, TEXT, QUERY, REQUEST, OFFLINE, NEXT, PREVIOUS, VIEW, CONFIRM, OPEN, OTHER_READER, MORE, BACK, RESET, CANCEL, LIBRARY }
 data class Choice(val mood: String = "surprise", val minutes: Int = 30, val preferUnopened: Boolean = true, val query: String = "", val round: Int = 0)
 data class CuratedBook(val book: Book, val reason: String, val tip: String, val origin: String = "offline")
-data class CuratorResult(val cards: List<CuratedBook>, val dialogue: String, val source: String, val notice: String = "", val inputTokens: Int = 0, val outputTokens: Int = 0)
+data class CuratorResult(val cards: List<CuratedBook>, val dialogue: String, val source: String, val notice: String = "", val inputTokens: Int = 0, val outputTokens: Int = 0,
+    val indexedBooks: Int? = null, val checkedCandidates: Int = 0)
 data class DialogueState(
     val stage: DialogueStage = DialogueStage.WELCOME,
     val choice: Choice = Choice(),

@@ -2,6 +2,24 @@
 
 2026-11-20（Asia/Taipei）。使用者接上 Leaf2 並要求測試；沿用已授權的安裝與驗收範圍，不切換 HOME、不修改系統設定、不停用原廠套件。主機開發紀錄見 [喵館員開發](LIBRARIAN_2026-11-20.md)。
 
+## 後續更新：只推薦實際館藏
+
+使用者要求推薦以 Leaf2 的實際書籍為基礎。正式版原本已接到自身 Room 書庫，但索引也含先前留下的驗收書；現在在離線與 AI 共用的候選篩選處，排除已知的 `Download/KoboStyleAcceptance-20261115/` 及 `KoboStyleCardTest-20261115/` 文件，僅對 externalstorage provider 已知 document ID 路徑套用。沒有依書名關鍵字誤排除正常書籍，也沒有移除測試文件或索引。獨立合成書庫測試須明確 opt in，正式 Activity 沒有這個入口。
+
+更新後 `assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 成功，**81 tests／0 failures／0 errors／0 skipped，Lint 0 errors／43 warnings**。已覆蓋安裝到 Leaf2，APK SHA-256：`5A6269237BBB271BEA60BD0F4E84A1510A84508D586CDEE12F575B6AE1D237BC`。
+
+新增的實機 `LibrarianRealLibraryTest` 通過（1 test，7.425 秒）：以本 App 實際 Room DB 唯讀稽核，兩條路徑均得到 `indexed=8166 fixtures=25 eligible=8141 readableCandidates=20 cards=3`。每張卡必須逐欄符合現有 Room 書籍，且可重新開啟 read-only file descriptor。離線與 **模擬 AI** 皆通過；fake transport 只在裝置記憶體處理書目，沒有傳到 OpenAI，沒有存取使用者 Key。測試只輸出數量與判定，不輸出私人書名或 URI。
+
+```powershell
+adb shell am instrument -w -r -e class org.kobostyle.launcher.LibrarianRealLibraryTest org.kobostyle.launcher.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+正式 MainActivity 另以「喵館員 → 逛逛主題書展 → 藏書尋寶 → 這次只用離線選書」實際操作，畫面顯示「本機館藏：8141 本 · 本次確認可讀：20 本」及實際書籍卡片。此頁面的館藏數是符合候選條件的索引筆數，不表示已逐本打開全部 8,141 本；可讀候選數才是這次實際檢查的文件數。仍維持每次最多核對排序前 60 本、取 20 本候選的上限。
+
+更新與操作後再次比對，8,166 筆書籍、4 個來源與 11 筆非零開啟紀錄的全部欄位完全相同。使用者原有 AI 模型／上限／啟用設定保留，API 呼叫計數維持 1，沒有新增付費請求。修改前唯一一次線上呼叫的非敏感結果代碼為 `authentication`；不宣稱真實 AI 推薦已成功。實際書庫畫面僅留在已忽略的 `.tools/librarian-device-20261120/real-library-result.png`，不公開。
+
+以下為本次修改之前的接機驗收歷史。
+
 ## P0 與資料保全
 
 執行 `scripts/diagnose_device.ps1`：一台已授權 Leaf2／ONYX，Android 11／API 30，1264×1680／300 dpi，唯讀診斷 0 failures。當前 HOME 為 KoboStyle HomeEntry；原廠 HOME 仍可解析。EPUB／PDF capability 查詢均找到裝置上的閱讀器 handler，接著另做真實 content URI 測試，沒有把 capability 當作開書證明。

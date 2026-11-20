@@ -27,7 +27,15 @@
 5. 儲存不發請求。下一次明確按「請墨喵用 AI 推薦」才送出。AI 已啟用時，仍可選這次只用離線；之後「再挑一批」保留此選擇。
 6. 設定可停用 AI、清空會話與快取、刪除本機 Key，以及透過 SAF 匯出不含書目與 Key 的診斷 JSON。刪除本機 Key 不等於在 OpenAI 撤銷憑證；遠端撤銷須由使用者在帳號管理頁操作。
 
+正式喵館員只從已匯入的本機館藏取候選，排除先前建立的兩個驗收資料夾；書籍推薦前核對檔案讀取權限，AI 回傳 ID 必須屬於此次候選。推薦頁顯示符合條件的館藏筆數與本次確認可讀的候選數。2026-11-20 Leaf2 已驗證排除 25 本驗收書後，以 8,141 本實際館藏挑選；不會刪除原有書庫中的驗收文件。完整結果見 [實機驗收](LIBRARIAN_DEVICE_2026-11-20.md)。
+
 尚未從本 App 開啟不等於真正未讀；時間是使用者預留的閱讀時間，不是讀完全書估計。離線選書依檔名分類、書名、作者與本 App 開啟紀錄評分，能辨識文字中提到的分類／作者，但不是離線語言模型。
+
+### 使用 scrcpy 輸入 Key
+
+Key 欄沒有禁止貼上，但 AI 設定視窗的 `FLAG_SECURE` 會限制螢幕擷取／鏡像；鏡像黑畫面不代表裝置無法輸入。請直接看 Leaf2 並點選 Key 輸入欄，再將電腦焦點切回官方 scrcpy 視窗，按預設快捷鍵「左 Alt＋Shift＋V」，將電腦剪貼簿以按鍵事件輸入。不要將 Key 放進命令列或聊天。這不是一般 Ctrl＋V 的 Android 剪貼簿同步方式。
+
+部分裝置的剪貼簿同步不相容時，官方 scrcpy 也提供 `scrcpy --legacy-paste --no-clipboard-autosync`。參見 [scrcpy 控制說明](https://github.com/Genymobile/scrcpy/blob/master/doc/control.md#copy-paste) 與 [預設快捷鍵](https://github.com/Genymobile/scrcpy/blob/master/doc/shortcuts.md)。若使用 QtScrcpy 等其他前端或自訂 shortcut modifier，需依該工具版本確認；上述替代方式尚未在本機 scrcpy 實測。
 
 ## OpenAI 契約與資料邊界
 

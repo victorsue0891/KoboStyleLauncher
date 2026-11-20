@@ -83,4 +83,18 @@ class DialogueTest {
         assertEquals(psychology, LocalCurator.rank(books, Choice(query = "請找合成甲寫的書")).first())
         assertEquals(novel, LocalCurator.rank(books, Choice(query = "測試小說 合成乙")).first())
     }
+    @Test fun reservedAcceptanceFoldersAreExcludedWithoutFilteringRealTitlesOrSimilarPaths() {
+        fun external(id: String, path: String) = sampleBook(1).copy(identity = id,
+            uri = "content://com.android.externalstorage.documents/document/test", documentId = path)
+        val fixtures = listOf(external("fixture-epub", "primary:Download/KoboStyleAcceptance-20261115/valid/Acceptance-EPUB-01.epub"),
+            external("fixture-card", "TEST-CARD:KoboStyleCardTest-20261115/Card-Test.pdf"))
+        val real = listOf(external("real", "TEST-CARD:Books/小說.epub"),
+            external("real-name", "TEST-CARD:Books/Acceptance-EPUB-01.epub").copy(title = "合成測試的故事"),
+            external("similar", "primary:Download/KoboStyleAcceptance-20261115-not-test/book.pdf"),
+            external("opaque-provider", "primary:Download/KoboStyleAcceptance-20261115/valid/a.pdf").copy(uri = "content://other.provider/a"))
+        val ranked = LocalCurator.rank(fixtures + real, Choice())
+        assertEquals(real.map { it.identity }.toSet(), ranked.map { it.identity }.toSet())
+        assertEquals(6, LocalCurator.rank(fixtures + real, Choice(), includeAcceptanceBooks = true).size)
+        assertTrue(LocalCurator.rank(fixtures, Choice()).isEmpty())
+    }
 }

@@ -86,7 +86,7 @@ class LibrarianDeviceAcceptanceTest {
         val prefs = AiPreferences(context.getSharedPreferences("acceptance_librarian", 0).apply { edit().clear().commit() })
         val vault = object : KeyVault { override fun exists() = false; override fun read(): String? = null; override fun save(value: String) = error("No real key in offline tests"); override fun delete() = Unit }
         var networkCalls = 0
-        val model = LibrarianViewModel(repository, prefs, vault, CuratorService(prefs, vault, CuratorTransport { _, _ -> networkCalls++; error("Offline test must not call API") }, { false })) {
+        val model = LibrarianViewModel(repository, prefs, vault, CuratorService(prefs, vault, CuratorTransport { _, _ -> networkCalls++; error("Offline test must not call API") }, { false }), includeAcceptanceBooks = true) {
             context.contentResolver.openFileDescriptor(Uri.parse(it.uri), "r")?.use { true } == true
         }
         AcceptanceActivity.repository = repository
