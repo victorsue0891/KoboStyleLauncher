@@ -10,6 +10,7 @@ import org.kobostyle.launcher.ui.MainActivity
 
 /** Debug-only, non-exported harness. No intent extras can supply a repository or override settings. */
 class AcceptanceActivity : MainActivity() {
+    override fun librarianModelFactory(): ViewModelProvider.Factory = librarianFactory ?: super.librarianModelFactory()
     override fun controlPreferences(): android.content.SharedPreferences = getSharedPreferences("acceptance_controls", MODE_PRIVATE)
     fun acceptsKeyForTest(event: android.view.KeyEvent): Boolean = handleContentKey(event)
     private fun probing(code: Int) = probeKeys && code !in listOf(android.view.KeyEvent.KEYCODE_BACK, android.view.KeyEvent.KEYCODE_HOME, android.view.KeyEvent.KEYCODE_POWER)
@@ -41,6 +42,7 @@ class AcceptanceActivity : MainActivity() {
         }
     }
     companion object {
+        var librarianFactory: ViewModelProvider.Factory? = null
         var repository: LibraryRepository? = null
         var testFontScale = 1f
         @Volatile var probeKeys = false
