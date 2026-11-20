@@ -1,5 +1,7 @@
 # P0 裝置與環境報告
 
+2026-11-18 分類功能開發前重新執行唯讀診斷：一台已授權 Leaf2，Android 11／API 30，1264×1680／300 dpi，0 個診斷命令失敗；預設 HOME 為 KoboStyle HomeEntry，原廠 HOME 仍可解析。升級後再次確認 HOME 與同文輸入法未變更。分類與 UI 實機驗證詳見 [分類紀錄](CATEGORIES_2026-11-18.md)。
+
 2026-11-16 後續使用者完成手動復原示範並核准，已透過 HOME_SETTINGS 設定 `org.kobostyle.launcher/.ui.HomeEntry` 為預設桌面。原廠 `ContentBrowser` 可由系統 UI 恢復；重開機保留預設，但 BOOX 仍先顯示原廠介面。刻意崩潰後系統清除預設、顯示兩桌面選擇器，已實測恢復原廠並再設回 KoboStyle。下方 P0 的 HOME 觀察為歷史狀態，最新證據見 [HOME 設定紀錄](HOME_SETUP_2026-11-16.md)。
 
 日期：2026-11-15（Asia/Taipei）。使用者已確認 USB 連線並授權。

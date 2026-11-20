@@ -131,9 +131,11 @@ class ScanTraversalTest {
         repository.scan { }
         assertEquals("Cached title", dao.book(book().identity)!!.title)
         assertEquals("ok", dao.book(book().identity)!!.scanStatus)
+        assertEquals("new.pdf", dao.book(book().identity)!!.displayName)
         provider.modified++
         repository.scan { }
         assertEquals("new", dao.book(book().identity)!!.title)
+        assertEquals("new.pdf", dao.book(book().identity)!!.displayName)
         assertEquals("metadata_error", dao.book(book().identity)!!.scanStatus)
         assertEquals(123L, dao.book(book().identity)!!.lastOpenedAt)
     }

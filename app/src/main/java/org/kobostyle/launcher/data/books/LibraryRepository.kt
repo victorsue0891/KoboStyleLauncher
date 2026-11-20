@@ -136,7 +136,7 @@ class LibraryRepository(
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { false }
             if (cached.scanStatus == "ok" || recovered) {
-                return cached.copy(uri = doc.uri.toString(), sourceUri = source.uri, documentId = doc.id, scanStatus = "ok")
+                return cached.copy(uri = doc.uri.toString(), sourceUri = source.uri, documentId = doc.id, displayName = doc.name, scanStatus = "ok")
             }
         }
         var title = doc.name.substringBeforeLast('.', doc.name).ifBlank { "EPUB / PDF" }
@@ -175,7 +175,7 @@ class LibraryRepository(
         catch (_: SecurityException) { status = "unavailable" }
         catch (_: java.io.FileNotFoundException) { status = "unavailable" }
         catch (_: Exception) { status = "metadata_error" }
-        return Book(id, doc.uri.toString(), source.uri, doc.id, title, author, mime, doc.modified, doc.size, coverPath = cover, scanStatus = status)
+        return Book(id, doc.uri.toString(), source.uri, doc.id, title, author, mime, doc.modified, doc.size, coverPath = cover, scanStatus = status, displayName = doc.name)
     }
     companion object {
         fun identity(authority: String, documentId: String) = Uri.encode(authority) + ":" + Uri.encode(documentId)

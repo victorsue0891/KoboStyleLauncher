@@ -1,5 +1,9 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-18 書籍分類
+
+首頁分類、按作者瀏覽／搜尋、分類返回與旋轉狀態已實作。`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 通過，43 項 JVM 測試無失敗，Lint 0 errors／32 warnings。`CategoryUiAcceptanceTest` 與 `ReaderUiAcceptanceTest` 實機 `OK (2 tests)`，使用獨立合成書庫。真實書庫升級前後 8,166 本的原有欄位及四個來源完全一致；沒有清空索引或重掃整個書庫。完整命令與限制見 [分類驗收](CATEGORIES_2026-11-18.md)。
+
 ## 2026-11-18 公開儲存庫整理驗證
 
 本輪只整理公開文件、忽略規則及文字格式，未變更應用程式行為、安裝 APK 或操作實機。從 Git index 匯出僅含待上傳檔案的乾淨副本；副本沒有原工作目錄的建置產物或 `local.properties`，透過環境變數使用已安裝的 JDK 17、Android SDK 與既有 Gradle 下載快取。

@@ -16,6 +16,8 @@ class LibraryViewModel @JvmOverloads constructor(
     val repository: LibraryRepository = LibraryRepository(application, LibraryDatabase.get(application).library())
 ) : AndroidViewModel(application) {
     val books = repository.dao.observeBooks().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val catalog = books.map { withContext(Dispatchers.Default) { BookCatalog(it) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BookCatalog(emptyList()))
     val sources = repository.dao.observeSources().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val progress = MutableStateFlow(ScanProgress())
     val message = MutableStateFlow<Int?>(null)

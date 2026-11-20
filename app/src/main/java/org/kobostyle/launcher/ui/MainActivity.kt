@@ -31,6 +31,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import org.kobostyle.launcher.R
 import org.kobostyle.launcher.data.db.Book
+import org.kobostyle.launcher.data.books.BookCatalog
+import org.kobostyle.launcher.data.books.BookFilename
 import org.kobostyle.launcher.reader.NeoReaderBridge
 import org.kobostyle.launcher.platform.HomeRoleHelper
 import java.text.DateFormat
@@ -63,6 +65,10 @@ open class MainActivity : ComponentActivity() {
     private var choosingTree = false
     private var recentOnly = false
     private var searchText = ""
+    private var selectedCategory: String? = null
+    private var selectedAuthor: String? = null
+    private var authorQuery = ""
+    private var catalog = BookCatalog(emptyList())
     private var displayBooks: List<Book> = emptyList()
     private val picker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) result.data?.let { data ->
@@ -76,6 +82,9 @@ open class MainActivity : ComponentActivity() {
         choosingTree = savedInstanceState?.getBoolean("choosingTree") ?: false
         recentOnly = savedInstanceState?.getBoolean("recentOnly") ?: false
         searchText = savedInstanceState?.getString("searchText").orEmpty()
+        selectedCategory = savedInstanceState?.getString("selectedCategory")
+        selectedAuthor = savedInstanceState?.getString("selectedAuthor")
+        authorQuery = savedInstanceState?.getString("authorQuery").orEmpty()
         volumePaging = controlPreferences().getBoolean("volume_paging", false)
         reversePaging = controlPreferences().getBoolean("reverse_paging", false)
         bridge = NeoReaderBridge(this)
@@ -113,7 +122,11 @@ open class MainActivity : ComponentActivity() {
         }
         bookAdapter = BookAdapter()
         grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int = if (page == "library" && list.adapter === bookAdapter && bookAdapter.currentList.getOrNull(position)?.kind == "book") 1 else grid.spanCount
+            override fun getSpanSize(position: Int): Int = when {
+                page == "categories" && position >= 2 -> 1
+                page == "library" && list.adapter === bookAdapter && bookAdapter.currentList.getOrNull(position)?.kind == "book" -> 1
+                else -> grid.spanCount
+            }
         }
         content.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
         content.addView(rule())
@@ -142,6 +155,7 @@ open class MainActivity : ComponentActivity() {
         homeRole.rememberOriginal()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (goBackInCatalog()) return
                 if (homeRole.isDefault()) {
                     if (page != "home") navigate("home")
                 } else {
@@ -153,7 +167,7 @@ open class MainActivity : ComponentActivity() {
         })
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { model.books.collect { displayBooks = it; renderList() } }
+                launch { model.catalog.collect { catalog = it; displayBooks = it.books; renderList() } }
                 launch { combine(model.progress, model.message, model.sources) { p, m, s -> Triple(p, m, s) }.collect { updateScanStatus() } }
             }
         }
@@ -167,9 +181,16 @@ open class MainActivity : ComponentActivity() {
             else -> 2
         }
     }
-    private fun navigate(destination: String, recent: Boolean = false, query: String = "") {
+    private fun navigate(destination: String, recent: Boolean = false, query: String = "", category: String? = null, author: String? = null) {
         page = destination; recentOnly = recent; searchText = query
+        selectedCategory = category; selectedAuthor = author
         render(); list.scrollToPosition(0)
+    }
+    private fun goBackInCatalog(): Boolean = when {
+        page == "library" && selectedAuthor != null -> { navigate("authors"); true }
+        page == "authors" || (page == "library" && selectedCategory != null) -> { navigate("categories"); true }
+        page == "categories" -> { navigate("home"); true }
+        else -> false
     }
     override fun onResume() { super.onResume(); updateStatus(); model.refresh() }
     override fun onNewIntent(intent: Intent) {
@@ -180,7 +201,7 @@ open class MainActivity : ComponentActivity() {
     protected open fun handleContentKey(event: KeyEvent): Boolean {
         val standard = event.keyCode == KeyEvent.KEYCODE_PAGE_UP || event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN
         val volume = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
-        if ((page == "home" || page == "library") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
+        if (page in listOf("home", "library", "categories", "authors") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 var direction = if (event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN || event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) 1 else -1
                 if (!standard && reversePaging) direction = -direction
@@ -193,6 +214,8 @@ open class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("page", page); outState.putBoolean("choosingTree", choosingTree)
         outState.putBoolean("recentOnly", recentOnly); outState.putString("searchText", searchText)
+        outState.putString("selectedCategory", selectedCategory); outState.putString("selectedAuthor", selectedAuthor)
+        outState.putString("authorQuery", authorQuery)
         super.onSaveInstanceState(outState)
     }
     override fun onDestroy() { bridge.close(); super.onDestroy() }
@@ -231,8 +254,11 @@ open class MainActivity : ComponentActivity() {
         scanButton.isEnabled = !p.running; scanButton.imageAlpha = if (p.running) 100 else 255
     }
     private fun render() {
+        grid.spanCount = if (page == "categories") if (resources.configuration.screenWidthDp / resources.configuration.fontScale >= 360) 2 else 1 else columns()
         actions.removeAllViews(); libraryActions.clear()
-        actions.visibility = if (page == "library") View.VISIBLE else View.GONE
+        val inCatalog = page in listOf("categories", "authors") || selectedCategory != null || selectedAuthor != null
+        actions.visibility = if (page == "library" || inCatalog) View.VISIBLE else View.GONE
+        if (inCatalog) actions.addView(button(getString(R.string.back_to_parent)) { goBackInCatalog() })
         if (page == "library") {
             libraryActions += button(getString(R.string.add_folder)) { pick(true) }
             libraryActions += button(getString(R.string.add_files)) { pick(false) }
@@ -240,7 +266,7 @@ open class MainActivity : ComponentActivity() {
             libraryActions.forEach { actions.addView(it, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) }) }
         }
         navigation.forEach { (key, tab) ->
-            val selected = key == page
+            val selected = key == page || (key == "library" && page in listOf("categories", "authors"))
             tab.isSelected = selected; tab.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
             tab.setCompoundDrawablesWithIntrinsicBounds(null, ReaderIcon(tab.tag as ReaderIcon.Kind, resources.displayMetrics.density, selected), null, null)
             tab.background = null
@@ -248,10 +274,14 @@ open class MainActivity : ComponentActivity() {
         updateScanStatus(); renderList()
     }
     private fun showSearch() {
-        val input = EditText(this).apply { id = R.id.search_input; setSingleLine(true); hint = getString(R.string.search_hint); setText(searchText) }
-        AlertDialog.Builder(this).setTitle(R.string.search_books).setView(input)
-            .setPositiveButton(R.string.search_action) { _, _ -> navigate("library", query = input.text.toString().trim()) }
-            .setNeutralButton(R.string.show_all) { _, _ -> navigate("library") }
+        val authors = page == "authors"
+        val input = EditText(this).apply { id = R.id.search_input; setSingleLine(true); hint = getString(if (authors) R.string.search_authors else R.string.search_hint); setText(if (authors) authorQuery else searchText) }
+        AlertDialog.Builder(this).setTitle(if (authors) R.string.search_authors else R.string.search_books).setView(input)
+            .setPositiveButton(R.string.search_action) { _, _ ->
+                if (authors) { authorQuery = input.text.toString().trim(); navigate("authors") }
+                else navigate("library", query = input.text.toString().trim(), category = selectedCategory, author = selectedAuthor)
+            }
+            .setNeutralButton(R.string.show_all) { _, _ -> if (authors) { authorQuery = ""; navigate("authors") } else navigate("library") }
             .setNegativeButton(android.R.string.cancel, null).show()
     }
     private fun pick(tree: Boolean) {
@@ -264,7 +294,23 @@ open class MainActivity : ComponentActivity() {
         try { picker.launch(intent) } catch (_: ActivityNotFoundException) { toast(R.string.source_error) }
     }
     private fun renderList() {
-        if (page == "apps") {
+        if (page == "categories") {
+            val labels = resources.getStringArray(R.array.book_category_labels)
+            list.adapter = TextAdapter(listOf(
+                getString(R.string.book_categories) to null,
+                getString(R.string.by_author) to { authorQuery = ""; navigate("authors") }
+            ) + BookFilename.categories.mapIndexed { i, category ->
+                (labels[i] + "  ·  " + getString(R.string.book_count, catalog.categoryCount(category))) to { navigate("library", category = category) }
+            } + listOf(
+                getString(R.string.show_all) to { navigate("library") },
+                (getString(R.string.uncategorized) + "  ·  " + getString(R.string.book_count, catalog.categoryCount(""))) to { navigate("library", category = "") }
+            ))
+        } else if (page == "authors") {
+            val authors = catalog.authors.filter { it.first.contains(authorQuery, true) || (it.first.isEmpty() && getString(R.string.unknown_author).contains(authorQuery, true)) }
+            list.adapter = TextAdapter(listOf(getString(R.string.by_author) to null) + authors.map { (name, count) ->
+                (name.ifEmpty { getString(R.string.unknown_author) } + "  ·  " + getString(R.string.book_count, count)) to { navigate("library", author = name) }
+            } + if (authors.isEmpty()) listOf(getString(R.string.no_authors) to null) else emptyList())
+        } else if (page == "apps") {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
             val apps = packageManager.queryIntentActivities(intent, 0).filter { it.activityInfo.exported && it.activityInfo.enabled && it.activityInfo.applicationInfo.enabled }.sortedBy { it.loadLabel(packageManager).toString() }
             list.adapter = TextAdapter(listOf(getString(R.string.visible_apps) to null) + apps.map { info ->
@@ -294,8 +340,14 @@ open class MainActivity : ComponentActivity() {
                 rows += ShelfRow("collections", "collections", books = displayBooks)
                 rows += ShelfRow("shortcuts", "shortcuts")
             } else {
-                val filtered = displayBooks.filter { (!recentOnly || it.lastOpenedAt > 0) && (searchText.isBlank() || it.title.contains(searchText, true) || it.author.contains(searchText, true)) }
-                val title = when { searchText.isNotBlank() -> getString(R.string.search_results, searchText); recentOnly -> getString(R.string.recent); else -> getString(R.string.my_books) }
+                val filtered = catalog.select(selectedCategory, selectedAuthor, recentOnly, searchText)
+                val groupTitle = when {
+                    selectedCategory != null -> if (selectedCategory!!.isEmpty()) getString(R.string.uncategorized) else resources.getStringArray(R.array.book_category_labels)[BookFilename.categories.indexOf(selectedCategory).coerceAtLeast(0)]
+                    selectedAuthor != null -> selectedAuthor!!.ifEmpty { getString(R.string.unknown_author) }
+                    recentOnly -> getString(R.string.recent)
+                    else -> getString(R.string.my_books)
+                }
+                val title = if (searchText.isNotBlank()) groupTitle + " · " + getString(R.string.search_results, searchText) else groupTitle
                 rows += ShelfRow("shelf-heading", "heading", title + "  ·  " + getString(R.string.book_count, filtered.size))
                 if (filtered.isEmpty()) rows += ShelfRow("empty", "empty", getString(if (displayBooks.isEmpty()) R.string.empty else R.string.no_matches))
                 else rows.addAll(filtered.map { ShelfRow("shelf-${it.identity}", book = it) })
@@ -386,7 +438,7 @@ open class MainActivity : ComponentActivity() {
                 textSize = 22f; setPadding(0, 0, 0, 0); contentDescription = book.title + " · " + getString(R.string.book_options)
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
             tile.addView(titleRow)
-            tile.addView(label(book.author.ifBlank { getString(R.string.unknown_author) }, 14f).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+            tile.addView(label(catalog.author(book).ifBlank { getString(R.string.unknown_author) }, 14f).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
         } else tile.addView(title)
         val note = when { book.scanStatus == "unavailable" -> getString(R.string.unavailable); book.scanStatus != "ok" -> getString(R.string.metadata_error); book.lastOpenedAt > 0 -> getString(R.string.opened_on, java.text.SimpleDateFormat("MM/dd", java.util.Locale.getDefault()).format(Date(book.lastOpenedAt))); else -> getString(R.string.never_opened) }
         tile.addView(label(note, 14f).apply { maxLines = 2; minLines = if (menu) 2 else 1; ellipsize = TextUtils.TruncateAt.END; contentDescription = note })
@@ -413,8 +465,9 @@ open class MainActivity : ComponentActivity() {
         override fun onBindViewHolder(holder: TextHolder, position: Int) {
             holder.container.removeAllViews()
             val (text, action) = rows[position]
-            holder.container.addView(if (action == null) label(text, if (position == 0) 24f else 16f, position == 0).apply { setPadding(0, dp(12), 0, dp(12)) } else button(text, outlined = false, action = action).apply { gravity = Gravity.START; setPadding(0, dp(12), 0, dp(12)) })
-            if (action != null) holder.container.addView(rule())
+            holder.container.setPadding(0, 0, if (page == "categories") dp(8) else 0, if (page == "categories") dp(8) else 0)
+            holder.container.addView(if (action == null) label(text, if (position == 0) 24f else 16f, position == 0).apply { setPadding(0, dp(12), 0, dp(12)) } else button(text, outlined = page == "categories", action = action).apply { gravity = Gravity.START; setPadding(dp(8), dp(16), dp(8), dp(16)) })
+            if (action != null && page != "categories") holder.container.addView(rule())
         }
     }
     private class TextHolder(val container: LinearLayout) : RecyclerView.ViewHolder(container)
@@ -444,7 +497,7 @@ open class MainActivity : ComponentActivity() {
                 "collections" -> {
                     val tiles = LinearLayout(this@MainActivity).apply { setPadding(0, dp(12), 0, dp(8)) }
                     val recent = row.books.filter { it.lastOpenedAt > 0 }
-                    tiles.addView(collection(getString(R.string.my_books), row.books, row.books.size, holder) { navigate("library") }, LinearLayout.LayoutParams(0, -2, 1f))
+                    tiles.addView(collection(getString(R.string.book_categories), row.books, row.books.size, holder) { navigate("categories") }, LinearLayout.LayoutParams(0, -2, 1f))
                     tiles.addView(collection(getString(R.string.recent), recent, recent.size, holder) { navigate("library", recent = true) }, LinearLayout.LayoutParams(0, -2, 1f))
                     holder.container.addView(tiles)
                 }

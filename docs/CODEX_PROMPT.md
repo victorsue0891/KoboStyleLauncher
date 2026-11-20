@@ -4,6 +4,8 @@
 
 ## 目前狀態
 
+- 2026-11-18 新增首頁「書籍分類」、11 類別及作者搜尋。Room v2 新增 `displayName`，以明確的 1→2 migration 保留原資料。43 項 JVM 與 2 項實機 UI 測試通過；8,166 本實際索引的原欄位、來源及開啟紀錄升級前後一致。參見 `docs/CATEGORIES_2026-11-18.md`；以下掃描修復數字是較早驗證。
+
 - 專案已有 Kotlin Android 原始碼、Gradle wrapper、Room、SAF EPUB/PDF 書庫、ACTION_VIEW 閱讀器橋接與測試；不要從 P0 重新建立專案。
 - 最近的程式修正處理大型 microSD 書庫掃描額度與錯誤分類。2026-11-17 驗證為 35 項 JVM 測試通過、Lint 0 errors / 32 warnings；實機 Books 8,141 本全部入庫。162 本使用中繼資料回退，未逐本驗證 NeoReader 開啟。詳見 `docs/SCAN_FIX_2026-11-17.md`。
 - 原開發裝置曾由使用者手動示範復原並批准，透過系統 UI 選 KoboStyle 為預設 HOME。這是歷史驗收結果，不代表任何新裝置已連線或同意切換。HOME 的已知開機及崩潰行為見 `docs/HOME_SETUP_2026-11-16.md`。
