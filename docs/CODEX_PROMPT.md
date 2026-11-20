@@ -4,6 +4,8 @@
 
 ## 目前狀態
 
+- 同日後續使用者已接機並授權測試：Leaf2 唯讀診斷成功、覆蓋升級後 8,166 本及 4 個來源資料一致；Keystore、喵館員／三本合成書開啟與 chooser、分類／書庫回歸共 4 項實機測試通過。真實 API 與人工項目以 `docs/LIBRARIAN_DEVICE_2026-11-20.md` 為最新狀態。下列「未連線」為接機前紀錄。
+
 - 2026-11-20 新增喵館員分頁，應用程式移到更多。依使用者擴大範圍，實作離線六表情選書及 opt-in OpenAI Responses API、Keystore AES-GCM、schema／ID 白名單、重試／取消／每日軟限額／記憶體快取。Room 仍為 v2。79 項主機測試通過，Lint 0 errors／43 warnings。Leaf2 本輪未連線，沒有 ADB、安裝或真實 API 呼叫；接機後依 `docs/LIBRARIAN_2026-11-20.md` 驗收。不要把 mock 成功說成真實 API 成功。
 
 - 2026-11-18 新增首頁「書籍分類」、11 類別及作者搜尋。Room v2 新增 `displayName`，以明確的 1→2 migration 保留原資料。43 項 JVM 與 2 項實機 UI 測試通過；8,166 本實際索引的原欄位、來源及開啟紀錄升級前後一致。參見 `docs/CATEGORIES_2026-11-18.md`；以下掃描修復數字是較早驗證。
