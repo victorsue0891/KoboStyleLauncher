@@ -20,7 +20,7 @@
 - 已在 Leaf2／Android 11 驗證 SAF 匯入、NeoReader 開啟合成 EPUB／PDF、microSD 拔插與授權恢復。
 - 大型書庫修復後，microSD Books 的 8,141 本 EPUB／PDF 全數入庫，補入原先漏掉的 4,049 本；含驗收書全庫 8,166 本。162 本使用中繼資料回退，不代表每本都已實際開啟。詳 [掃描修復](docs/SCAN_FIX_2026-11-17.md)。
 - 喵館員候選只取已匯入的實際館藏，排除先前驗收資料夾。Leaf2 已確認 8,166 筆索引中排除 25 本驗收書，以其餘 8,141 本選書；推薦頁顯示本次實際核對的可讀候選數。
-- 最新主機驗證為 84 項 JVM 測試通過、Lint 0 errors／45 warnings。診斷新版已安裝到 Leaf2；真實 API 最近回傳 401／invalid_api_key，仍待有效 Key 驗證。先前實際館藏來源與檔案存取測試 1/1 通過，Keystore、喵館員／合成書開書與分類／書庫回歸共 4 項實機測試亦有紀錄。完整結果見 [實機驗收](docs/LIBRARIAN_DEVICE_2026-11-20.md)。
+- 最新主機驗證為 84 項 JVM 測試通過、Lint 0 errors／45 warnings。新版已安裝到 Leaf2；更換有效 Key 後，真實 OpenAI 推薦回傳 HTTP 200，重複同組推薦命中快取且不增加呼叫次數。先前實際館藏來源與檔案存取測試 1/1 通過，Keystore、喵館員／合成書開書與分類／書庫回歸共 4 項實機測試亦有紀錄。完整結果見 [實機驗收](docs/LIBRARIAN_DEVICE_2026-11-20.md)。
 - 繁體注音以另外安裝並配置同文輸入法驗證；鍵盤與字典不包含在本 App。詳 [注音輸入紀錄](docs/INPUT_METHOD_2026-11-17.md)。
 
 保留 BOOX NeoReader 與原廠桌面。沒有 root、ROM 修改、其他 App 私有資料庫存取或全檔案權限。喵館員新增 INTERNET 權限，但 AI 預設關閉、只在使用者啟用並要求推薦時連線。最新版本提供預設停用、需手動啟用的 HOME 入口及「更多 → 桌面與復原」；安裝／一般啟動不會變更預設桌面。使用者完成手動復原示範並核准後，已透過系統 UI 將 Leaf2 設為 KoboStyle 預設桌面；Home／Back、原廠復原、故障選擇器、重開機保留預設與 PDF 開書已驗證。BOOX 開機仍先顯示原廠介面，按一次 Home 才進入 KoboStyle；刻意崩潰後系統會重新要求選桌面。詳 [HOME 設定紀錄](docs/HOME_SETUP_2026-11-16.md)。長期待機尚未驗證，詳見 [測試紀錄](docs/TEST_PLAN.md)。
