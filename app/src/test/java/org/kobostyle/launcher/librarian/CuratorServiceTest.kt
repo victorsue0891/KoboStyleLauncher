@@ -49,7 +49,22 @@ class CuratorServiceTest {
             assertEquals(if (code == 429 || code >= 500) 2 else 1, calls)
             assertEquals(calls, prefs.count()); assertEquals(calls - 1, waits)
             assertFalse(result.toString().contains("sensitive error"))
+            assertEquals(code, prefs.diagnostics().getInt("last_http_status"))
+            assertFalse(prefs.diagnostics().toString().contains("sensitive error"))
         }
+    }
+    @Test fun diagnosticsSanitizeErrorCodesAndResetBeforeNewAttempt() {
+        val prefs = prefs()
+        prefs.httpResponse(401, "invalid_api_key")
+        assertEquals("invalid_api_key", prefs.diagnostics().getString("last_error_code"))
+        prefs.httpResponse(403, "SECRET fake credential")
+        assertEquals("unknown", prefs.diagnostics().getString("last_error_code"))
+        assertFalse(prefs.diagnostics().toString().contains("SECRET"))
+        prefs.beginHttpAttempt()
+        assertEquals(0, prefs.diagnostics().getInt("last_http_status"))
+        assertEquals("none", prefs.diagnostics().getString("last_error_code"))
+        prefs.httpResponse(200, "invalid_api_key")
+        assertEquals("none", prefs.diagnostics().getString("last_error_code"))
     }
     @Test fun retrySuccessAndEveryAttemptUsesBudget() = runBlocking {
         val prefs = prefs().apply { save(AiConfig(true)) }; var calls = 0

@@ -47,7 +47,7 @@ Key 欄沒有禁止貼上，但 AI 設定視窗的 `FLAG_SECURE` 會限制螢幕
 - 連線逾時 10 秒、讀取 20 秒，整體請求工作 45 秒；429／5xx 最多重試一次，退避 1–3 秒。取消／離開分頁／App 退到背景會取消工作及斷線；旋轉保留 ViewModel。已送到服務端的請求無法保證撤回或免計費。
 - 預設每日 20 次本機軟限制，可設 1–100；失敗及重試也計次。不能當作帳務硬上限。相同候選及條件快取最多八組、十分鐘，僅在記憶體；上／下一張不呼叫 API。清空、改設定、刪 Key 或程序結束會清除快取。
 - Android Keystore AES-256-GCM 加密 Key；密文放 `noBackupFilesDir`，同目錄暫存密文同步後原子替換，儲存失敗不退回明文。Key 欄不存 view state、不自動填入、不個人化學習，設定視窗使用 FLAG_SECURE。裝置遭入侵時仍可能在執行期擷取 Key，Keystore 不能完全消除此風險。
-- 診斷只記推薦操作、呼叫次數、最後結果代碼／耗時與最後成功回應 token 數；不記 prompt、原始回應、書目、URI 或 Key。不保留磁碟對話；操作歷史最多六個動作名稱。
+- 診斷只記推薦操作、呼叫次數、最後結果代碼／耗時與最後成功回應 token 數；同日後續加入最近 HTTP 嘗試的狀態碼及固定清單中的錯誤碼（格式版本 2）。錯誤本文最多讀取 8 KiB 並只留下已知 error.code，其餘丟棄；不記 prompt、原始回應、書目、URI 或 Key。不保留磁碟對話；操作歷史最多六個動作名稱。
 
 官方依據：[Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create)、[Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)、[模型與價格](https://developers.openai.com/api/docs/models/gpt-4.1-mini)、[資料處理政策](https://developers.openai.com/api/docs/guides/your-data)、[Android Keystore](https://developer.android.com/privacy-and-security/keystore)。
 

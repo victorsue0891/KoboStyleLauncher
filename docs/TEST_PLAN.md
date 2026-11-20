@@ -1,5 +1,9 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-20 新 Key 重試與 HTTP 診斷
+
+原版重試仍 authentication（計數 2→3，2,013 ms）；新增僅記 HTTP 狀態及允許清單錯誤碼的診斷後，正式 Leaf2 重試明確收到 **401／invalid_api_key**（3→4，1,022 ms），正常回退離線，真實 AI 尚未通過。84 項 JVM／Robolectric 測試全數通過，Lint 0 errors／45 warnings，兩份 APK 建置成功，主 APK 已覆蓋安裝。書庫／來源／開啟紀錄摘要與 HOME 未變。完整命令、隱私保護及限制見 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。
+
 ## 2026-11-20 OpenAI 真實重試
 
 正式 App 再次送出推薦請求，呼叫計數 1→2，耗時 2,955 ms，結果仍為 `authentication`（現有程式合併 HTTP 401／403）。畫面確認回退離線，真實 AI 推薦未通過。沒有讀取 Key、修改程式或重跑不相關測試。詳 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。

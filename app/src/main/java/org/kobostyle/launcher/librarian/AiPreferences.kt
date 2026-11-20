@@ -25,6 +25,13 @@ class AiPreferences(private val prefs: SharedPreferences, private val date: () -
     @Synchronized fun usage(input: Int, output: Int) {
         prefs.edit().putInt("last_input_tokens", input.coerceAtLeast(0)).putInt("last_output_tokens", output.coerceAtLeast(0)).apply()
     }
+    @Synchronized fun beginHttpAttempt() {
+        prefs.edit().remove("last_http_status").remove("last_error_code").apply()
+    }
+    @Synchronized fun httpResponse(status: Int, errorCode: String) {
+        prefs.edit().putInt("last_http_status", status.takeIf { it in 100..599 } ?: 0)
+            .putString("last_error_code", if (status in 200..299) "none" else ApiErrorCode.safe(errorCode)).apply()
+    }
     @Synchronized fun outcome(kind: String, durationMillis: Long) {
         val safeKind = kind.takeIf { it in setOf("ok", "cache", "empty", "disabled", "no_key", "offline", "key_storage", "limit", "timeout", "authentication", "rate_limit", "server", "http", "invalid_response", "network") } ?: "invalid_response"
         prefs.edit().putString("last_outcome", safeKind).putLong("last_duration_ms", durationMillis.coerceAtLeast(0)).apply()
@@ -34,5 +41,7 @@ class AiPreferences(private val prefs: SharedPreferences, private val date: () -
         .put("last_output_tokens", prefs.getInt("last_output_tokens", 0))
         .put("operation", "recommend").put("last_outcome", prefs.getString("last_outcome", "none"))
         .put("last_duration_ms", prefs.getLong("last_duration_ms", 0))
-        .put("app", "KoboStyle").put("report_version", 1)
+        .put("last_http_status", prefs.getInt("last_http_status", 0))
+        .put("last_error_code", prefs.getString("last_error_code", "none"))
+        .put("app", "KoboStyle").put("report_version", 2)
 }

@@ -2,7 +2,26 @@
 
 2026-11-20（Asia/Taipei）。使用者接上 Leaf2 並要求測試；沿用已授權的安裝與驗收範圍，不切換 HOME、不修改系統設定、不停用原廠套件。主機開發紀錄見 [喵館員開發](LIBRARIAN_2026-11-20.md)。
 
-## 最新：真實 OpenAI 再次檢查
+## 最新：重新輸入 Key 後的精確診斷
+
+使用者表示已在裝置重新輸入 Key。先以原版重試，計數 2→3，耗時 2,013 ms，仍為合併的 `authentication`。為避免無法區分 401／403，補上安全診斷並覆蓋安裝：最近一次實際 HTTP 嘗試的狀態碼，以及固定允許清單中的錯誤代碼。每次開始 HTTP 嘗試先清除舊狀態；離線或快取不改寫最近 HTTP 狀態。錯誤本文最多讀取 8 KiB，只取 `error.code`，未知／損壞／過大資料記 `unknown`；不記錄或匯出原文、message、書目、URI 或 Key，重新導向仍不跟隨也不讀取本文。診斷格式版本為 2。
+
+更新後正式操作「喵館員 → 逛逛主題書展 → 藏書尋寶 → 請墨喵用 AI 推薦」，計數 **3→4**，耗時 **1,022 ms**，取得 **HTTP 401／`invalid_api_key`**。因此確認目前裝置送出的憑證被 OpenAI 拒絕，不能宣稱 AI 已可用；仍無法區分輸入不完整、已撤銷或其他金鑰本身的問題。沒有讀取、替換或輸出使用者 Key。畫面正常回退離線，顯示 8,141 本館藏／20 本可讀候選。未再重複同一失敗呼叫。
+
+```powershell
+. .\scripts\use_local_tools.ps1
+.\gradlew.bat assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain
+$env:PATH = "$env:ANDROID_HOME\platform-tools;$env:PATH"
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -W -n org.kobostyle.launcher/.ui.MainActivity
+# 在正式 UI 依上述步驟要求 AI 推薦；診斷報告可由 AI 設定匯出。
+```
+
+建置成功，**84 tests／0 failures／0 errors／0 skipped，Lint 0 errors／45 warnings**（新增兩項 SharedPreferences UseKtx 建議，未隱藏）。新增測試涵蓋錯誤碼允許清單、原始敏感文字不外流、重複 JSON key／過大／非 JSON／讀取失敗退路、狀態重設及 HTTP 狀態保留。主 APK 安裝成功，SHA-256 `38C08A506220FCF9C3E4FCD0B1EF9A57D44E9ACC031B1BBD79098274EF34BAC1`。本輪未重跑不相關的閱讀器 instrumentation。
+
+更新前後 8,166 筆書籍、4 個來源、11 筆非零開啟紀錄的逐列摘要一致；HOME 仍為 `org.kobostyle.launcher/.ui.HomeEntry`。非敏感結果保留於忽略目錄 `.tools/librarian-device-20261120/api-diagnostics-after.json`，私人畫面不公開。後續須在 OpenAI 平台確認／建立有效 Key，再於裝置 AI 設定儲存後重驗；不要把 Key 貼到聊天或命令列。
+
+## 歷史：真實 OpenAI 再次檢查
 
 使用者要求再次檢查呼叫，已於正式喵館員從推薦頁返回，再按「請墨喵用 AI 推薦」。啟用狀態為 true、模型 `gpt-4.1-mini`；本機呼叫計數由 1 增為 2，耗時 2,955 ms，結果代碼仍是 `authentication`。畫面明確顯示 API Key／專案權限無法使用，並回退離線選書，**真實 AI 推薦仍未成功**。這次沒有修改程式或 Key，也沒有讀取或輸出 Key。
 

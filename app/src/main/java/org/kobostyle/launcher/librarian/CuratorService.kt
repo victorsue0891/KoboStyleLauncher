@@ -6,7 +6,7 @@ import java.net.URL
 import java.security.MessageDigest
 import javax.net.ssl.HttpsURLConnection
 
-data class WireResponse(val code: Int, val body: String = "", val retryAfterSeconds: Int = 1)
+data class WireResponse(val code: Int, val body: String = "", val retryAfterSeconds: Int = 1, val errorCode: String = "unknown")
 fun interface CuratorTransport { suspend fun post(key: String, body: String): WireResponse }
 
 /** Fixed HTTPS destination, no redirects, no tools, no logging of requests or error bodies. */
@@ -29,7 +29,9 @@ class OpenAiTransport(private val connectionFactory: (URL) -> HttpsURLConnection
                 connection.outputStream.use { it.write(bytes) }
                 ensureActive()
                 val code = connection.responseCode
-                if (code !in 200..299) WireResponse(code, retryAfterSeconds = connection.getHeaderField("Retry-After")?.toIntOrNull()?.coerceIn(1, 3) ?: 1)
+                if (code !in 200..299) WireResponse(code,
+                    retryAfterSeconds = connection.getHeaderField("Retry-After")?.toIntOrNull()?.coerceIn(1, 3) ?: 1,
+                    errorCode = if (code in 400..599) readErrorCode(connection) else "unknown")
                 else {
                     val output = java.io.ByteArrayOutputStream()
                     connection.inputStream.use { input ->
@@ -47,6 +49,22 @@ class OpenAiTransport(private val connectionFactory: (URL) -> HttpsURLConnection
             }
         } finally { try { watcher.cancelAndJoin() } finally { connection.disconnect() } }
     }
+
+    private suspend fun readErrorCode(connection: HttpsURLConnection): String = try {
+        connection.errorStream?.use { input ->
+            val output = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(1024)
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (output.size() + read > 8192) return@use "unknown"
+                output.write(buffer, 0, read)
+            }
+            ApiErrorCode.parse(output.toString("UTF-8"))
+        } ?: "unknown"
+    } catch (e: CancellationException) { throw e }
+    catch (_: Exception) { "unknown" }
 }
 
 class CuratorService(
@@ -93,8 +111,10 @@ class CuratorService(
                     if (!preferences.reserve()) throw CuratorFailure("limit")
                     val key = try { vault.read() ?: throw CuratorFailure("no_key") }
                         catch (_: Exception) { throw CuratorFailure("key_storage") }
+                    preferences.beginHttpAttempt()
                     response = transport.post(key, request)
                     val code = response!!.code
+                    preferences.httpResponse(code, response!!.errorCode)
                     if (code in 200..299) return@repeat
                     val kind = when (code) { 401, 403 -> "authentication"; 429 -> "rate_limit"; in 500..599 -> "server"; else -> "http" }
                     if (attempt == 0 && (code == 429 || code in 500..599)) waitRetry(response!!.retryAfterSeconds.coerceIn(1, 3) * 1000L)

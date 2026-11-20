@@ -3,6 +3,9 @@ package org.kobostyle.launcher.librarian
 import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -12,13 +15,18 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.HttpsURLConnection
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [30])
 class TransportTest {
     private class Connection(url: URL, val code: Int = 200, val stream: InputStream = ByteArrayInputStream("{}".toByteArray()), val disconnected: () -> Unit = {}) : HttpsURLConnection(url) {
         val sent = ByteArrayOutputStream()
         var closed = false
         var reads = 0
+        var errorReads = 0
+        var errors: InputStream? = null
         override fun getOutputStream() = sent
         override fun getInputStream(): InputStream { reads++; return stream }
+        override fun getErrorStream(): InputStream? { errorReads++; return errors }
         override fun getResponseCode() = code
         override fun disconnect() { closed = true; disconnected() }
         override fun usingProxy() = false
@@ -44,7 +52,31 @@ class TransportTest {
         val connection = Connection(URL("https://api.openai.com/v1/responses"), 302)
         val response = OpenAiTransport { connection }.post("test-key", "{}")
         assertEquals(302, response.code); assertEquals("", response.body); assertEquals(0, connection.reads)
+        assertEquals(0, connection.errorReads)
         assertEquals(3, response.retryAfterSeconds); assertTrue(connection.closed)
+    }
+    @Test fun errorDiagnosticsRetainOnlyAllowlistedCodeNeverMessage() = runBlocking {
+        for ((body, expected) in listOf(
+            """{"error":{"code":"invalid_api_key","message":"SECRET fake credential"}}""" to "invalid_api_key",
+            """{"error":{"code":"SECRET fake credential","message":"SECRET"}}""" to "unknown",
+            """{"error":{"code":"invalid_api_key","code":"SECRET"}}""" to "unknown",
+            "<html>SECRET</html>" to "unknown",
+            (" ".repeat(8193) + "SECRET") to "unknown"
+        )) {
+            val connection = Connection(URL("https://api.openai.com/v1/responses"), 401)
+            connection.errors = ByteArrayInputStream(body.toByteArray())
+            val response = OpenAiTransport { connection }.post("test-key", "{}")
+            assertEquals(401, response.code); assertEquals(expected, response.errorCode)
+            assertEquals("", response.body); assertFalse(response.toString().contains("SECRET"))
+            assertTrue(connection.closed)
+        }
+    }
+    @Test fun unreadableErrorBodyDoesNotHideHttpStatus() = runBlocking {
+        val connection = Connection(URL("https://api.openai.com/v1/responses"), 403)
+        connection.errors = object : InputStream() { override fun read(): Int = throw java.io.IOException("SECRET") }
+        val response = OpenAiTransport { connection }.post("test-key", "{}")
+        assertEquals(403, response.code); assertEquals("unknown", response.errorCode)
+        assertFalse(response.toString().contains("SECRET")); assertTrue(connection.closed)
     }
     @Test fun bodyLimitClosesConnection() = runBlocking {
         val connection = Connection(URL("https://api.openai.com/v1/responses"), stream = ByteArrayInputStream(ByteArray(262_145)))
