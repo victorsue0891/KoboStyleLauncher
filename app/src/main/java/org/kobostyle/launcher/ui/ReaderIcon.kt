@@ -5,7 +5,7 @@ import android.graphics.drawable.Drawable
 
 /** Small monochrome, code-native icons; no bitmap assets, animation or vendor APIs. */
 class ReaderIcon(private val kind: Kind, private val density: Float, private val active: Boolean = false) : Drawable() {
-    enum class Kind { HOME, BOOKS, APPS, MORE, LIGHT, WIFI, REFRESH, SEARCH }
+    enum class Kind { HOME, BOOKS, APPS, MORE, LIGHT, WIFI, REFRESH, SEARCH, CAT }
     private val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.BLACK; strokeWidth = 1.5f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND; style = Paint.Style.STROKE
     }
@@ -24,6 +24,11 @@ class ReaderIcon(private val kind: Kind, private val density: Float, private val
             }
             Kind.BOOKS -> { canvas.drawRect(3f, 7f, 7f, 21f, ink); canvas.drawRect(9f, 3f, 13f, 21f, ink); val p = Path().apply { moveTo(15f, 8f); lineTo(19f, 7f); lineTo(23f, 20f); lineTo(19f, 21f); close() }; canvas.drawPath(p, ink) }
             Kind.APPS -> for (x in listOf(4f, 14f)) for (y in listOf(4f, 14f)) canvas.drawRect(x, y, x + 6, y + 6, ink)
+            Kind.CAT -> {
+                val face = Path().apply { moveTo(4f, 9f); lineTo(4f, 2f); lineTo(9f, 6f); quadTo(12f, 5f, 15f, 6f); lineTo(20f, 2f); lineTo(20f, 9f); cubicTo(25f, 24f, -1f, 24f, 4f, 9f); close() }
+                canvas.drawPath(face, ink); canvas.drawCircle(8f, 12f, 2.5f, ink); canvas.drawCircle(16f, 12f, 2.5f, ink)
+                line(10.5f, 12f, 13.5f, 12f); line(11f, 16f, 13f, 16f)
+            }
             Kind.MORE -> for (y in listOf(5f, 12f, 19f)) line(3f, y, 21f, y)
             Kind.LIGHT -> {
                 canvas.drawCircle(12f, 12f, 4f, ink)

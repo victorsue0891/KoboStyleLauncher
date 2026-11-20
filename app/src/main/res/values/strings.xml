@@ -1,4 +1,6 @@
 <resources>
+    <string name="librarian">喵館員</string>
+    <string name="librarian_settings">喵館員 AI 設定</string>
     <string name="book_categories">書籍分類</string>
     <string name="by_author">按作者分類</string>
     <string name="uncategorized">未分類</string>

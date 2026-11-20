@@ -35,6 +35,7 @@ import org.kobostyle.launcher.data.books.BookCatalog
 import org.kobostyle.launcher.data.books.BookFilename
 import org.kobostyle.launcher.reader.NeoReaderBridge
 import org.kobostyle.launcher.platform.HomeRoleHelper
+import org.kobostyle.launcher.librarian.*
 import java.text.DateFormat
 import java.util.Date
 
@@ -46,6 +47,15 @@ open class MainActivity : ComponentActivity() {
     private var volumePaging = false
     private var reversePaging = false
     private val model: LibraryViewModel by viewModels { libraryModelFactory() }
+    protected open fun librarianModelFactory() = object : androidx.lifecycle.ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            check(modelClass == LibrarianViewModel::class.java)
+            return LibrarianViewModel.create(application, model.repository) as T
+        }
+    }
+    private val librarian: LibrarianViewModel by viewModels { librarianModelFactory() }
+    private lateinit var librarianPanel: LibrarianPanel
     private lateinit var bridge: NeoReaderBridge
     private val homeRole by lazy { HomeRoleHelper(this) }
     private lateinit var content: LinearLayout
@@ -70,6 +80,16 @@ open class MainActivity : ComponentActivity() {
     private var authorQuery = ""
     private var catalog = BookCatalog(emptyList())
     private var displayBooks: List<Book> = emptyList()
+    private val diagnosticPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) lifecycleScope.launch {
+            val report = librarian.preferences.diagnostics().toString(2)
+            val saved = withContext(Dispatchers.IO) {
+                try { contentResolver.openOutputStream(uri, "wt")?.use { it.write(report.toByteArray(Charsets.UTF_8)); true } ?: false }
+                catch (_: Exception) { false }
+            }
+            Toast.makeText(this@MainActivity, if (saved) "已匯出診斷報告" else "無法寫入診斷報告", Toast.LENGTH_LONG).show()
+        }
+    }
     private val picker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) result.data?.let { data ->
             val uris = data.clipData?.let { clip -> (0 until clip.itemCount).map { clip.getItemAt(it).uri } } ?: listOfNotNull(data.data)
@@ -129,9 +149,11 @@ open class MainActivity : ComponentActivity() {
             }
         }
         content.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
+        librarianPanel = LibrarianPanel(this, ::librarianAction, ::showLibrarianSettings).apply { visibility = View.GONE }
+        content.addView(librarianPanel, LinearLayout.LayoutParams(-1, 0, 1f))
         content.addView(rule())
         val bottom = LinearLayout(this).apply { setPadding(dp(8), dp(4), dp(8), dp(2)) }
-        val tabs = listOf(Triple("home", R.string.home, ReaderIcon.Kind.HOME), Triple("library", R.string.library, ReaderIcon.Kind.BOOKS), Triple("apps", R.string.apps, ReaderIcon.Kind.APPS), Triple("settings", R.string.settings, ReaderIcon.Kind.MORE))
+        val tabs = listOf(Triple("home", R.string.home, ReaderIcon.Kind.HOME), Triple("library", R.string.library, ReaderIcon.Kind.BOOKS), Triple("librarian", R.string.librarian, ReaderIcon.Kind.CAT), Triple("settings", R.string.settings, ReaderIcon.Kind.MORE))
         tabs.forEach { (key, title, icon) ->
             val tab = button(getString(title), outlined = false) { navigate(key) }.apply {
                 textSize = 14f; minHeight = dp(64); gravity = Gravity.CENTER
@@ -155,6 +177,11 @@ open class MainActivity : ComponentActivity() {
         homeRole.rememberOriginal()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (page == "apps") { navigate("settings"); return }
+                if (page == "librarian") {
+                    if (librarian.state.value.stage == DialogueStage.WELCOME) navigate("home") else librarianAction(DialogueAction.BACK, "")
+                    return
+                }
                 if (goBackInCatalog()) return
                 if (homeRole.isDefault()) {
                     if (page != "home") navigate("home")
@@ -168,6 +195,7 @@ open class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { model.catalog.collect { catalog = it; displayBooks = it.books; renderList() } }
+                launch { librarian.state.collect { if (page == "librarian") librarianPanel.render(it, librarian.preferences.config()) } }
                 launch { combine(model.progress, model.message, model.sources) { p, m, s -> Triple(p, m, s) }.collect { updateScanStatus() } }
             }
         }
@@ -182,6 +210,7 @@ open class MainActivity : ComponentActivity() {
         }
     }
     private fun navigate(destination: String, recent: Boolean = false, query: String = "", category: String? = null, author: String? = null) {
+        if (page == "librarian" && destination != "librarian") librarian.leavePage()
         page = destination; recentOnly = recent; searchText = query
         selectedCategory = category; selectedAuthor = author
         render(); list.scrollToPosition(0)
@@ -193,6 +222,10 @@ open class MainActivity : ComponentActivity() {
         else -> false
     }
     override fun onResume() { super.onResume(); updateStatus(); model.refresh() }
+    override fun onStop() {
+        if (!isChangingConfigurations && page == "librarian") librarian.leavePage()
+        super.onStop()
+    }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -201,11 +234,15 @@ open class MainActivity : ComponentActivity() {
     protected open fun handleContentKey(event: KeyEvent): Boolean {
         val standard = event.keyCode == KeyEvent.KEYCODE_PAGE_UP || event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN
         val volume = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
-        if (page in listOf("home", "library", "categories", "authors") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
+        if (page in listOf("home", "library", "categories", "authors", "librarian") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 var direction = if (event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN || event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) 1 else -1
                 if (!standard && reversePaging) direction = -direction
-                list.scrollBy(0, direction * (list.height * .9f).toInt())
+                if (page == "librarian") {
+                    if (librarian.state.value.stage == DialogueStage.CARDS && librarian.state.value.card != null)
+                        librarianAction(if (direction > 0) DialogueAction.NEXT else DialogueAction.PREVIOUS, "")
+                    else librarianPanel.scrollBy(0, direction * (librarianPanel.height * .9f).toInt())
+                } else list.scrollBy(0, direction * (list.height * .9f).toInt())
             }
             return true
         }
@@ -254,11 +291,17 @@ open class MainActivity : ComponentActivity() {
         scanButton.isEnabled = !p.running; scanButton.imageAlpha = if (p.running) 100 else 255
     }
     private fun render() {
+        list.visibility = if (page == "librarian") View.GONE else View.VISIBLE
+        librarianPanel.visibility = if (page == "librarian") View.VISIBLE else View.GONE
         grid.spanCount = if (page == "categories") if (resources.configuration.screenWidthDp / resources.configuration.fontScale >= 360) 2 else 1 else columns()
         actions.removeAllViews(); libraryActions.clear()
         val inCatalog = page in listOf("categories", "authors") || selectedCategory != null || selectedAuthor != null
         actions.visibility = if (page == "library" || inCatalog) View.VISIBLE else View.GONE
         if (inCatalog) actions.addView(button(getString(R.string.back_to_parent)) { goBackInCatalog() })
+        if (page == "apps") {
+            actions.visibility = View.VISIBLE
+            actions.addView(button(getString(R.string.back_to_parent)) { navigate("settings") })
+        }
         if (page == "library") {
             libraryActions += button(getString(R.string.add_folder)) { pick(true) }
             libraryActions += button(getString(R.string.add_files)) { pick(false) }
@@ -266,7 +309,7 @@ open class MainActivity : ComponentActivity() {
             libraryActions.forEach { actions.addView(it, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) }) }
         }
         navigation.forEach { (key, tab) ->
-            val selected = key == page || (key == "library" && page in listOf("categories", "authors"))
+            val selected = key == page || (key == "library" && page in listOf("categories", "authors")) || (key == "settings" && page == "apps")
             tab.isSelected = selected; tab.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
             tab.setCompoundDrawablesWithIntrinsicBounds(null, ReaderIcon(tab.tag as ReaderIcon.Kind, resources.displayMetrics.density, selected), null, null)
             tab.background = null
@@ -294,6 +337,7 @@ open class MainActivity : ComponentActivity() {
         try { picker.launch(intent) } catch (_: ActivityNotFoundException) { toast(R.string.source_error) }
     }
     private fun renderList() {
+        if (page == "librarian") { librarianPanel.render(librarian.state.value, librarian.preferences.config()); return }
         if (page == "categories") {
             val labels = resources.getStringArray(R.array.book_category_labels)
             list.adapter = TextAdapter(listOf(
@@ -319,6 +363,8 @@ open class MainActivity : ComponentActivity() {
         } else if (page == "settings") {
             list.adapter = TextAdapter(listOf(
                 getString(R.string.room_settings) to null,
+                getString(R.string.apps) to { navigate("apps") },
+                getString(R.string.librarian_settings) to { showLibrarianSettings() },
                 getString(R.string.home_recovery) to { showHomeRecovery() },
                 getString(if (volumePaging) R.string.volume_paging_on else R.string.volume_paging_off) to {
                     volumePaging = !volumePaging; controlPreferences().edit().putBoolean("volume_paging", volumePaging).apply(); renderList()
@@ -355,11 +401,27 @@ open class MainActivity : ComponentActivity() {
             bookAdapter.submitList(rows)
         }
     }
-    private fun open(book: Book, chooser: Boolean) {
+    private fun librarianAction(action: DialogueAction, value: String) {
+        when (val effect = librarian.dispatch(action, value)) {
+            DialogueEffect.Library -> navigate("library")
+            DialogueEffect.TextEntry -> LibrarianDialogs.textEntry(this) { librarianAction(DialogueAction.QUERY, it) }
+            is DialogueEffect.Open -> lifecycleScope.launch {
+                val book = model.repository.dao.book(effect.id)
+                if (book == null) { toast(R.string.source_error); return@launch }
+                open(book, effect.chooser) { page == "librarian" && librarian.state.value.stage == DialogueStage.CONFIRM && librarian.state.value.card?.book?.identity == effect.id }
+            }
+            else -> Unit
+        }
+    }
+    private fun showLibrarianSettings() = LibrarianDialogs.settings(this, librarian,
+        changed = { if (page == "librarian") librarianPanel.render(librarian.state.value, librarian.preferences.config()) },
+        export = { try { diagnosticPicker.launch("kobostyle-ai-diagnostics.json") } catch (_: ActivityNotFoundException) { toast(R.string.source_error) } })
+    private fun open(book: Book, chooser: Boolean, stillRequested: () -> Boolean = { true }) {
         lifecycleScope.launch {
             val accessible = withContext(Dispatchers.IO) {
                 try { contentResolver.openFileDescriptor(Uri.parse(book.uri), "r")?.use { true } ?: false } catch (_: Exception) { false }
             }
+            if (!stillRequested()) return@launch
             if (!accessible) { model.repository.dao.bookStatus(book.identity, "unavailable"); toast(R.string.source_error); return@launch }
             bridge.open(Uri.parse(book.uri), book.mime, chooser) { model.opened(book) }?.let { toast(it) }
         }
