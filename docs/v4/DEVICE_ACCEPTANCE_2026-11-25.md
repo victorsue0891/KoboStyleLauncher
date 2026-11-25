@@ -2,6 +2,8 @@
 
 日期：2026-11-25，Asia/Taipei。使用者已接上並授權 Leaf2；本紀錄接續 [P1–P5 主機開發](IMPLEMENTATION_2026-11-25.md)。測試只更新 KoboStyle 及其測試 APK，沒有更改 HOME、系統設定或 BOOX 套件。
 
+驗收狀態：**本輪 V4 P1–P6 已完成**。使用者在最後人工確認要求後回覆「確認ok, 請繼續」，確認電子紙文字與刷新可接受、上下實體鍵能在書靈頁捲動。此結論限於下列已記錄的測試範圍；長期待機與其他韌體等限制仍保留。
+
 ## 裝置與資料保留
 
 `scripts/diagnose_device.ps1` 確認一台 authorized Leaf2，Android 11／API 30、1264×1680／300 dpi、韌體 4.0.2，唯讀命令失敗數 0。當前 HOME 為 `org.kobostyle.launcher/.ui.HomeEntry`，原廠 HOME `com.onyx/.StartupActivity` 仍可解析。EPUB／PDF capability discovery 回傳 `com.onyx.kreader/.ui.ReaderHomeActivity`；這是此次觀察，程式沒有硬編碼該元件。
@@ -74,7 +76,7 @@ AI 完成後一致性副本 quick_check 通過，books／sources 的逐列 hash 
 
 正式 UI 關閉 V4 後，原 V3 館員歡迎頁正常、書靈入口隱藏，原書庫載入後顯示 13,618 本；舊模式讀取整庫期間曾短暫顯示初始 0 本，載入後恢復，沒有刪資料。再開啟 V4，書靈、精修歡迎語、四章知識包、手動邊界及兩筆費用均保留。最後停止本 App、取得一致性快照並重新啟動，兩個 DB quick_check 通過，原 books／sources hash 仍與升級前一致；正式書靈畫面再次確認還原。切換及重新啟動沒有新增 API 請求。
 
-目前功能開發、可自動驗證與正式 SAF／真實 API 流程已完成；**P6 尚待使用者回報本輪電子紙文字、殘影／刷新與上下實體鍵的人工觀察**，已保留書靈畫面供操作。不能以上次 V3 人工觀察或注入 PageDown 宣稱本輪實體驗收通過。唯讀診斷為 0 個失敗，既有 HOME／閱讀器解析未變。
+功能開發、可自動驗證與正式 SAF／真實 API 流程已完成。使用者最後回覆「確認ok, 請繼續」，確認本輪書靈畫面的文字大小、殘影／刷新可接受，下方及上方實體鍵可捲動並返回；**P6 人工驗收通過**。這是使用者的實體觀察，與截圖／注入 PageDown 分開記錄，未推論為量化殘影或長期耗電測試。唯讀診斷為 0 個失敗，既有 HOME／閱讀器解析未變。收尾只更新文件，沒有再發出 API 請求、改動裝置或重新選擇 HOME。
 
 ## 重現命令
 
