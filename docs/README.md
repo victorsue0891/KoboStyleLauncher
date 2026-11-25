@@ -9,6 +9,7 @@
 | [V4 Leaf2 實機驗收](v4/DEVICE_ACCEPTANCE_2026-11-25.md) | 13,618 本升級、批次索引修正、效能、原生測試與正式畫面驗收 |
 | [知識包轉換與匯入](v4/KNOWLEDGE_PACK.md) | Windows 離線 adapter、SAF JSON 合約、大小／hash／章節限制 |
 | [裝置摘要](DEVICE_REPORT.md) | 已確認的裝置能力及後續驗證摘要 |
+| [韌體相容性](FIRMWARE_COMPATIBILITY_2026-11-25.md) | Leaf2 4.0.2 的 App UID 能力／七項回歸測試，其他韌體狀態與重測程序 |
 | [測試計畫與結果](TEST_PLAN.md) | 自動測試命令、實機測試及未完成項目；依日期保留歷史結果 |
 | [桌面復原](RECOVERY.md) | 使用原廠桌面與恢復預設桌面的路徑 |
 | [閱讀器實測程序](P3_PROCEDURE.md) | SAF content URI 與 NeoReader 的驗證步驟 |

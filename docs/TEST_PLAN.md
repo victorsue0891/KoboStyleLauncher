@@ -1,5 +1,9 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-25 韌體相容性
+
+Leaf2 BOOX 4.0.2／Android 11／build 10545：`FirmwareCompatibilityTest` 兩項、`LibrarianKeyStoreTest` 一項與 `SpiritDeviceAcceptanceTest` 四項，`OK (7 tests)`／37.896 秒。`assembleDebugAndroidTest lintDebug` exit 0，Lint 0 errors／61 warnings；正式程式未修改，未重跑已通過的 106 項主機測試。測試前後資料一致、零新增付費 API。其他韌體未測；前提、精確命令、能力查詢與實際操作的界線見 [相容性報告](FIRMWARE_COMPATIBILITY_2026-11-25.md)。
+
 ## 2026-11-25 V4 接機驗證
 
 同日正式畫面驗收：使用者手動選取合成 JSON 後，SAF 對書確認／四章匯入成功；已讀第 3 章的本機片段及引用正確。兩次明確核准的真實 AI（問答、歡迎語精修各一次）均成功，V4 ledger 恰好兩筆 SUCCESS，本機核算總計 USD 0.000651，沒有重送。V4 關閉／開啟、程序重啟後書靈／知識包／費用保留，原書庫資料不變。使用者已回覆「確認ok, 請繼續」，確認本輪電子紙文字／刷新與上下實體鍵捲動可接受，P6 本輪驗收完成；長期待機等範圍限制仍依實機報告保留。
