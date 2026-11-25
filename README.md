@@ -10,23 +10,25 @@
 
 上圖為 Leaf2 上使用合成書籍的介面驗收畫面。實際書庫畫面與橫向配置見 [UI 更新與驗收](docs/UI_REDESIGN_2026-11-16.md)。原始設計參考圖僅留在開發者本機，不納入儲存庫。
 
-原始碼位於 `app/src/main/`，JVM 測試位於 `app/src/test/`，實機測試位於 `app/src/androidTest/`；建置與驗收腳本位於 `scripts/`。完整紀錄見 [文件導覽](docs/README.md)。
+原始碼位於 `app/src/main/`，JVM 測試位於 `app/src/test/`，實機測試位於 `app/src/androidTest/`；建置與驗收腳本位於 `scripts/`。功能變更見 [更新紀錄](CHANGELOG.md)，完整驗收與歷史資料見 [文件導覽](docs/README.md)。
 
-## 目前進度
+## 目前功能
 
-- 韌體相容性：Leaf2 **BOOX 4.0.2／Android 11（build 10545）**通過本輪七項系統能力與回歸測試；其他韌體／機型未驗證，未進行刷機或 OTA。精確版本、測試範圍與後續重測命令見 [韌體相容性報告](docs/FIRMWARE_COMPATIBILITY_2026-11-25.md)。
-- V4 P1–P6 本輪開發與驗收完成：正式 SAF 合成知識包匯入、手動防劇透邊界、兩次真實 AI（單書問答／歡迎語精修）、V4 開關與程序重啟保存均已通過。原書庫完整保留；使用者已確認本輪電子紙顯示／刷新可接受，上下實體鍵可捲動。合成操作截圖、用量與未涵蓋的長期測試範圍見 [V4 實機驗收](docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md)。
-- 2026-11-25：V4 書靈 P1–P5 已完成並安裝到 Leaf2，實際 13,618 本及來源資料升級保留。新增免費 Lite 書靈、單書知識包／引用與防劇透問答、費用確認／緊急停止、50 本分頁及可續掃索引。從「更多 → 書靈與費用設定」手動開啟，新付費功能預設關閉。106 項 JVM／Robolectric、2 項 Python 及 8 項實機測試分別通過，Lint 0 errors／61 warnings；首次索引改為批次寫入，完成後程序冷啟動首畫面 P95 2.01 秒。正式 SAF 匯入、真實 AI 與人工顯示驗收的進度以 [V4 實機紀錄](docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md) 為準；操作方式見 [V4 開發紀錄](docs/v4/IMPLEMENTATION_2026-11-25.md)。下方館藏數字為較早版本。
-- 黑白首頁、可調欄數書封網格、搜尋、最近開啟與可選實體鍵翻頁已實作。
-- 首頁「書籍分類」提供 11 個類別與作者瀏覽，依 `[類別]-書名-作者名.epub/pdf` 分類；作者清單支援搜尋，另保留全部書籍及未分類。詳見 [分類功能與驗收](docs/CATEGORIES_2026-11-18.md)。
-- 第三分頁改為「喵館員」，「應用程式」移至「更多」。墨喵提供六種靜態表情、離線對話選書、主題推薦；可自行啟用 OpenAI 並在裝置輸入 Key。API 僅傳最多 20 本候選書目與當次需求，金鑰以 Android Keystore 加密，失敗可回退離線。詳見 [喵館員開發與驗收](docs/LIBRARIAN_2026-11-20.md)。
-- 已在 Leaf2／Android 11 驗證 SAF 匯入、NeoReader 開啟合成 EPUB／PDF、microSD 拔插與授權恢復。
-- 大型書庫修復後，microSD Books 的 8,141 本 EPUB／PDF 全數入庫，補入原先漏掉的 4,049 本；含驗收書全庫 8,166 本。162 本使用中繼資料回退，不代表每本都已實際開啟。詳 [掃描修復](docs/SCAN_FIX_2026-11-17.md)。
-- 喵館員候選只取已匯入的實際館藏，排除先前驗收資料夾。Leaf2 已確認 8,166 筆索引中排除 25 本驗收書，以其餘 8,141 本選書；推薦頁顯示本次實際核對的可讀候選數。
-- 2026-11-20 的 V3 主機驗證為 84 項 JVM 測試通過、Lint 0 errors／45 warnings。該版已安裝到 Leaf2；更換有效 Key 後，真實 OpenAI 推薦回傳 HTTP 200，重複同組推薦命中快取且不增加呼叫次數。先前實際館藏來源與檔案存取測試 1/1 通過，Keystore、喵館員／合成書開書與分類／書庫回歸共 4 項實機測試亦有紀錄。完整結果見 [實機驗收](docs/LIBRARIAN_DEVICE_2026-11-20.md)。
-- 繁體注音以另外安裝並配置同文輸入法驗證；鍵盤與字典不包含在本 App。詳 [注音輸入紀錄](docs/INPUT_METHOD_2026-11-17.md)。
+- **書房與分類**：黑白首頁、可調欄數書封、搜尋、最近開啟、可選實體鍵翻頁；依 `[類別]-書名-作者名.epub/pdf` 提供 11 個分類、作者瀏覽及未分類書籍。見 [分類功能](docs/CATEGORIES_2026-11-18.md)。
+- **喵館員**：第三分頁由墨喵提供離線對話選書與主題推薦；應用程式移至「更多」。推薦取自已匯入館藏，排除已知驗收書，可選擇啟用 OpenAI，最多傳送 20 本候選書目及當次需求。見 [館員驗收](docs/LIBRARIAN_DEVICE_2026-11-20.md)。
+- **V4 書靈**：免費建立只依書目的 Lite 人格；透過 SAF 匯入單本知識包後，可依手動已讀章節查看本機片段，或選用附引用的 AI 問答與歡迎語精修。不傳書籍全文、不同步 NeoReader 進度。見 [操作方式](docs/v4/IMPLEMENTATION_2026-11-25.md) 與 [知識包格式](docs/v4/KNOWLEDGE_PACK.md)。
+- **大書庫與費用控制**：V4 每頁最多 50 本、中文搜尋、批次索引與手動續掃；共用 AI 請求控制、費用預覽、日／月預算、用量紀錄及緊急停止，不自動重試。未知扣款保留估計額度；本機紀錄不是供應商帳單。
+- **繁體注音**：已使用另外安裝的同文輸入法驗證；鍵盤與字典不包含在本 App。見 [輸入法紀錄](docs/INPUT_METHOD_2026-11-17.md)。
 
-保留 BOOX NeoReader 與原廠桌面。沒有 root、ROM 修改、其他 App 私有資料庫存取或全檔案權限。喵館員新增 INTERNET 權限，但 AI 預設關閉、只在使用者啟用並要求推薦時連線。最新版本提供預設停用、需手動啟用的 HOME 入口及「更多 → 桌面與復原」；安裝／一般啟動不會變更預設桌面。使用者完成手動復原示範並核准後，已透過系統 UI 將 Leaf2 設為 KoboStyle 預設桌面；Home／Back、原廠復原、故障選擇器、重開機保留預設與 PDF 開書已驗證。BOOX 開機仍先顯示原廠介面，按一次 Home 才進入 KoboStyle；刻意崩潰後系統會重新要求選桌面。詳 [HOME 設定紀錄](docs/HOME_SETUP_2026-11-16.md)。長期待機尚未驗證，詳見 [測試紀錄](docs/TEST_PLAN.md)。
+V4 與新書靈付費功能預設關閉，從「更多 → 書靈與費用設定」開啟。AI 需要使用者啟用、在裝置輸入自己的 Key 並主動觸發；V4 開啟時，每次新付費請求另確認費用。Key 以 Android Keystore 加密。停用 V4 可回到原介面並保留資料，但主書庫已升級至 schema 3，**不能直接安裝僅支援舊 schema 的 APK 降版**，詳 [復原方式](docs/RECOVERY.md)。
+
+## 已驗證範圍（2026-11-25）
+
+V4 P1–P6 本輪開發與驗收已完成：實際 13,618 本書與來源資料升級保留，合成知識包匯入、兩次真實 AI、功能開關及程序重啟保存通過，使用者確認電子紙顯示／刷新與上下實體鍵可接受。106 項 JVM／Robolectric、2 項 Python 測試通過；八項實機驗收分別通過，後續七項韌體回歸亦通過（兩組有重疊）。Lint 0 errors／61 warnings。
+
+首次投影仍可能需要數分鐘；索引完成後十次程序冷啟動首畫面 P95 為 2.01 秒，不等於首次索引或所有封面載入時間。詳 [V4 實機報告與截圖](docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md)。韌體只確認 **Leaf2 BOOX 4.0.2／Android 11／build 10545**；其他版本、機型與長期待機耗電尚未驗證，見 [韌體相容性報告](docs/FIRMWARE_COMPATIBILITY_2026-11-25.md)。
+
+保留 BOOX NeoReader 與原廠桌面，沒有 root、ROM 修改、其他 App 私有資料庫存取或全檔案權限。HOME 入口預設停用，安裝／一般啟動不變更桌面。原開發裝置已在使用者手動復原示範與核准後，透過系統 UI 設為預設；歷史測試發現 BOOX 開機仍先顯示原廠介面，按 Home 才進入 KoboStyle，崩潰後可能重新要求選擇桌面。新裝置仍須先驗證復原，見 [HOME 紀錄](docs/HOME_SETUP_2026-11-16.md)。
 
 ## 建置（Windows PowerShell）
 
@@ -39,18 +41,14 @@ cd KoboStyleLauncher
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\test_diagnose_device.ps1
 ```
 
-首次需連網下載建置相依套件；書庫與離線館員可離線運作，選用 OpenAI 推薦需網路及自行提供 API Key。Gradle wrapper JAR 與啟動腳本已納入專案，Gradle 發行包以 SHA-256 驗證。`.tools` 不隨儲存庫提供；只有已自行建立該目錄結構的開發環境才使用 `. .\scripts\use_local_tools.ps1`，它只調整當前 PowerShell 的環境變數。
+首次需連網下載建置相依套件；書庫、離線館員、Lite 書靈與已匯入的允許片段可離線使用。選用 OpenAI 推薦／問答／精修需網路及自行提供 API Key。Gradle wrapper JAR 與啟動腳本已納入專案，Gradle 發行包以 SHA-256 驗證。`.tools` 不隨儲存庫提供；只有已自行建立該目錄結構的開發環境才使用 `. .\scripts\use_local_tools.ps1`，它只調整當前 PowerShell 的環境變數。
 
 固定版本：AGP 8.13.2、Gradle 8.13、Kotlin 2.2.21、KSP 2.2.21-2.0.4、Room 2.8.4、minSdk 30、compileSdk/targetSdk 36。採 API 36 的穩定相容工具組，沒有為繞過權限而降低 target。AGP/JDK/Gradle 相容性依據：[Android 官方版本說明](https://developer.android.com/build/releases/agp-8-13-0-release-notes)。
 
 在 Android 11 上，套件查詢受 `<queries>` 限制，SAF 選取根目錄亦有限制。Android 15/16 上處理 system bars insets，沒有強制方向或 HOME role；其他 Android 版本尚無實機測試。
 
-首次核心驗證：debug APK 建置成功、18/18 JVM/Robolectric 測試與 6/6 診斷 mock 測試通過；當時 Lint 0 errors、19 個版本／寫法建議。APK 已驗證 debug 簽章，後續已安裝修正版至 Leaf2；EPUB/PDF 真實開書、翻頁、正常返回、重啟保存、異常文件及 100／1000 本獨立索引測試已通過。解凍後啟動回歸通過，歷史紀錄詳 [實機驗收紀錄](docs/ACCEPTANCE_2026-11-15.md)，最新結果見下方補充驗收。
-
 APK 路徑：`app/build/outputs/apk/debug/app-debug.apk`。
 Application ID：`org.kobostyle.launcher`。debug 簽章只供開發測試。
-
-2026-11-15 補充驗收：主機測試增加至 21 項；單一文件真實授權撤銷／恢復、microSD 實體拔插／恢復、字級 1.0／1.3、1000 筆書架取樣、60 秒 App 無重繪及一次正常重開機後開書已驗證。實體 Leaf2 按鍵觀察到 25／24，已加入可選翻頁與反向設定；標準 Page Up／Page Down 亦支援。詳 [補充驗收與重現命令](docs/EXTENDED_ACCEPTANCE_2026-11-15.md)。
 
 ## 裝置測試
 
@@ -73,7 +71,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\deploy_debug.ps1
 - 「我的書籍」→ 加入資料夾或加入書籍。只保留持續「讀取」授權。來源不支援持續授權時提示重新選取。
 - 點書封／書名開書；長按封面或書籍旁「⋯」開啟選單，可選「其他閱讀器」。頂端放大鏡搜尋本機索引中的書名／作者，支援「顯示全部書籍」。首頁僅顯示實際開啟日期，沒有虛構閱讀百分比。
 - 頂端時鐘、電量與 Wi-Fi 於回到前景時更新，避免定時重繪。太陽圖示開啟系統設定，並非未經驗證的 BOOX 亮度控制。僅在本 App 隱藏系統狀態列，可由頂端滑出；不更改全域系統設定。
-- 使用者觸發單一 IO coroutine 掃描，可以取消；旋轉保留 ViewModel。App process 結束時掃描停止，重開後可手動重掃；沒有常駐或週期性工作。
+- 使用者觸發單一 IO coroutine 掃描，可以取消；旋轉保留 ViewModel。App process 結束時掃描停止，重開後可手動續掃；沒有常駐或週期性工作。
 - 原始書籍不修改。Room 以 provider authority + document ID 去重，儲存來源 URI、大小、修改時間、作者、封面、掃描狀態及自己的開啟事件。重新掃描保留開啟紀錄。
 - EPUB 支援 container → OPF、EPUB 2 cover meta、EPUB 3 cover-image。單一 archive 上限 128 MiB、4096 entries、中央目錄 4 MiB（開啟 ZIP 前檢查，拒絕 ZIP64／分卷）、宣告展開總量 256 MiB、XML 1 MiB、封面 4 MiB、200 倍壓縮比例、XML 深度 64。SVG 封面或不支援的格式使用預設圖示。這些上限可能拒絕部分合法大書。
 - PDF 使用 PdfRenderer，僅渲染第一頁、檔案大小上限 256 MiB，縮圖最多 240×360。作者不推測，標題採 SAF 檔名；損壞、加密或不支援 seek 的 provider 回退預設封面。原生 PDF renderer 的所有惡意輸入風險不能只靠單元測試排除。
