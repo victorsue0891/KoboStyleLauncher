@@ -1,5 +1,11 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-25 V4 P1–P5 主機驗證
+
+`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` exit 0，106 tests／0 failures／0 errors／0 skipped，Lint 0 errors／61 warnings；Python adapter 2/2 通過。包含共用 gateway／未知扣款、0／300／13,618／20,000 合成書各 10 次 lifecycle 零 API、Room 2→3 migration、FTS5／50 頁／增量索引、掃描 checkpoint、Lite、單書章節邊界、引用白名單、問答連按及知識包 rollback。實際命令、階段結果、主機預覽與限制見 [V4 完整紀錄](v4/IMPLEMENTATION_2026-11-25.md)。
+
+全部假資料／fake transport，沒有真實 API。未接 Leaf2、未執行 ADB 或 instrumentation；APK 建置成功不代表安裝／性能／電子紙／SAF picker／真實問答已驗收。下一步是該文件 P6 清單。以下保留歷史結果。
+
 ## 2026-11-20 更換 Key 後真實 API／快取通過
 
 正式 Leaf2 重新要求 AI 推薦，`gpt-4.1-mini` 回傳 **HTTP 200／ok**，耗時 10,430 ms，input 1,119／output 415 tokens，呼叫計數 4→5。畫面確認 OpenAI 推薦及 8,141 本館藏／20 本可讀候選；回應通過結構與候選 ID 驗證。再次要求同組推薦命中快取（42 ms），計數維持 5。沒有修改程式、重新建置或讀取 Key；未重跑不相關測試。詳 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。

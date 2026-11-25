@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "packId": "demo-pack-0001",
+  "source": {
+    "type": "manual",
+    "toolVersion": "fixture-1.0",
+    "generatedAtUtc": "2026-11-25T00:00:00Z"
+  },
+  "bookMatch": {
+    "title": "測試用虛構書籍",
+    "author": "虛構作者",
+    "fingerprint": null
+  },
+  "sections": [
+    {
+      "sectionId": "s001",
+      "chapterOrder": 1,
+      "title": "第一章：測試資料",
+      "content": "這是一份虛構測試知識包，用來驗證章節引用。內容不取自真實書籍。",
+      "sourceLocator": "chapter-1",
+      "contentSha256": "2039978cad30ce3625e50518b26df77cb72bcca75bbcf5f6cbf865ab187c4606"
+    },
+    {
+      "sectionId": "s002",
+      "chapterOrder": 2,
+      "title": "第二章：測試範例",
+      "content": "本章只用於測試劇透保護：未讀章節不能進入 LLM 上下文。",
+      "sourceLocator": "chapter-2",
+      "contentSha256": "8b098452bd65791270f2e42ffa28d8ed7477f7cf4b4f2061c992be8ca98ebf81"
+    }
+  ]
+}

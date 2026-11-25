@@ -1,5 +1,7 @@
 # KoboStyle Launcher — Product & Engineering Specification
 
+2026-11-25 V4 extension: user authorized P1–P5 after the repository audit. Book Spirits adds opt-in paged metadata, local Lite personas, bounded single-book Q&A and SAF knowledge packs, with a shared AI gateway and local cost reservations. The library schema migrates 2→3; a separate bundled-SQLite Room v1 store supplies FTS5. Original reader/HOME/key behavior remains. Host tests passed; Leaf2 was not connected and P6 is pending. See [implementation and limits](docs/v4/IMPLEMENTATION_2026-11-25.md).
+
 2026-11-20 extension: the user requested the Cat Librarian tab and explicitly included OpenAI integration. Apps now lives under More. AI is opt-in, uses a device-entered encrypted key and candidate metadata only, and preserves the existing Room v2/SAF/reader/HOME behavior. The current implementation, privacy boundary, host results and pending device gates are documented in [Cat Librarian development](docs/LIBRARIAN_2026-11-20.md). The baseline phases and device results below are historical; no device was connected for this extension.
 
 Version: 1.0 (2026-11-14)\
