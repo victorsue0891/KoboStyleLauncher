@@ -96,8 +96,12 @@ class LibrarianDeviceAcceptanceTest {
         AcceptanceActivity.testFontScale = 1.3f
         val scenario = ActivityScenario.launch(AcceptanceActivity::class.java)
         fun press(label: String) {
-            instrumentation.waitForIdleSync()
-            scenario.onActivity { a -> views(a.findViewById(android.R.id.content)).filterIsInstance<Button>().single { it.text.toString() == label && it.isShown }.performClick() }
+            var clicked = false
+            await("Control $label") {
+                if (!clicked) scenario.onActivity { a -> views(a.findViewById(android.R.id.content)).filterIsInstance<Button>()
+                    .singleOrNull { it.text.toString() == label && it.isShown && it.isEnabled }?.let { clicked = it.performClick() } }
+                clicked
+            }
             instrumentation.waitForIdleSync()
         }
         fun stage(expected: DialogueStage) = await("Expected $expected") { model.state.value.stage == expected }
@@ -142,6 +146,13 @@ class LibrarianDeviceAcceptanceTest {
                     val handlers = ReaderResolver(context).discover(Uri.parse(card.uri), card.mime)
                     assertEquals("Expected a single verified handler for synthetic fixture", 1, handlers.size)
                     val handler = handlers.single()
+                    lateinit var returningActivity: AcceptanceActivity
+                    scenario.onActivity { returningActivity = it }
+                    fun launcherHasFocus(): Boolean {
+                        var focused = false
+                        instrumentation.runOnMainSync { focused = returningActivity.hasWindowFocus() && !returningActivity.isFinishing }
+                        return focused
+                    }
                     if (index == 2) {
                         press("使用其他閱讀器"); SystemClock.sleep(600)
                         key(KeyEvent.KEYCODE_BACK); SystemClock.sleep(600)
@@ -164,15 +175,23 @@ class LibrarianDeviceAcceptanceTest {
                     key(KeyEvent.KEYCODE_PAGE_DOWN)
                     SystemClock.sleep(700); shot("reader-$index-after")
                     key(KeyEvent.KEYCODE_BACK)
-                    await("Return to launcher") { automation.rootInActiveWindow?.packageName?.toString() == context.packageName }
+                    val firstBackDeadline = SystemClock.elapsedRealtime() + 10_000
+                    while (!launcherHasFocus() && SystemClock.elapsedRealtime() < firstBackDeadline) SystemClock.sleep(100)
+                    var backPresses = 1
+                    // BOOX can return from a chooser-opened document to its reader task first.
+                    // Record this route explicitly; do not change the reader or HOME settings.
+                    if (!launcherHasFocus() && automation.rootInActiveWindow?.packageName?.toString() == handler.component.packageName) {
+                        shot("reader-$index-back-intermediate"); key(KeyEvent.KEYCODE_BACK); backPresses++
+                    }
+                    await("Return to launcher focus") { launcherHasFocus() }
                     stage(DialogueStage.CONFIRM)
                     assertTrue(runBlocking { db.library().book(card.identity)!!.lastOpenedAt > 0L })
-                    report("CAT_READER index=$index mime=${card.mime} handler=${handler.component.packageName} returned=PASS openEvent=PASS screenshots=PENDING_VISUAL_REVIEW")
+                    report("CAT_READER index=$index mime=${card.mime} handler=${handler.component.packageName} returned=PASS backPresses=$backPresses openEvent=PASS screenshots=PENDING_VISUAL_REVIEW")
                 }
             }
             press("重新開始"); stage(DialogueStage.WELCOME)
             assertEquals(0, networkCalls)
-        } catch (e: Throwable) { failure = e; throw e } finally {
+        } catch (e: Throwable) { failure = e; shot("failure"); throw e } finally {
             model.leavePage()
             try {
                 scenario.onActivity { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }

@@ -29,6 +29,7 @@ abstract class LibraryDao {
     @Query("SELECT * FROM books WHERE identity > :after ORDER BY identity LIMIT 50") abstract suspend fun page(after: String): List<Book>
     @Query("SELECT * FROM catalog_changes ORDER BY identity LIMIT 50") abstract suspend fun changes(): List<CatalogChange>
     @Query("DELETE FROM catalog_changes WHERE identity = :id AND revision = :revision") abstract suspend fun ack(id: String, revision: String)
+    @Transaction open suspend fun acknowledge(changes: List<CatalogChange>) { changes.forEach { ack(it.identity, it.revision) } }
     @Query("SELECT COUNT(*) FROM books") abstract suspend fun count(): Int
     @Query("SELECT COUNT(*) FROM catalog_changes") abstract fun observeChanges(): Flow<Int>
     @Query("SELECT * FROM scan_jobs WHERE source = :source") abstract suspend fun scanJob(source: String): ScanJob?

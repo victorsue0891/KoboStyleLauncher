@@ -10,8 +10,8 @@ import org.kobostyle.launcher.librarian.OpenAiTransport
 import org.kobostyle.launcher.librarian.CuratorTransport
 
 class SpiritRuntime internal constructor(application: Application,
-    val database: SpiritDatabase = SpiritDatabase.get(application), transport: CuratorTransport = OpenAiTransport()) {
-    val settings = SpiritSettings(application.getSharedPreferences("spirits_v4", 0))
+    val database: SpiritDatabase = SpiritDatabase.get(application), transport: CuratorTransport = OpenAiTransport(),
+    val settings: SpiritSettings = SpiritSettings(application.getSharedPreferences("spirits_v4", 0))) {
     val gateway = OpenAiGateway(database, settings, transport)
     private var consentOwner = WeakReference<ComponentActivity>(null)
     fun bindConsent(activity: ComponentActivity) { consentOwner = WeakReference(activity) }

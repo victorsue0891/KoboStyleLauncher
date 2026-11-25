@@ -165,6 +165,8 @@ class SpiritDataTest {
         val changed = library.library().book("id-00000")!!.copy(title = "新的唯一標題")
         library.library().index(changed); assertEquals(1, library.library().changes().size)
         catalog.sync(); assertEquals(changed, catalog.page(CatalogFilter(query = "唯一標題")).books.single())
+        assertEquals(13617, catalog.page(CatalogFilter(query = "科學書")).count)
+        assertEquals(13618, db.dao().number(sql("SELECT COUNT(*) FROM catalog_fts")))
         assertEquals(13618, db.dao().count()); assertTrue(library.library().changes().isEmpty())
         val best = library.library().book("id-13000")!!.copy(displayName = "[科普]-遙遠的科學-作者.pdf")
         library.library().index(best); catalog.sync()

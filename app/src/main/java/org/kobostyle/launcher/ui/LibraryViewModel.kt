@@ -13,9 +13,9 @@ import org.kobostyle.launcher.data.db.*
 
 class LibraryViewModel @JvmOverloads constructor(
     application: Application,
-    val repository: LibraryRepository = LibraryRepository(application, LibraryDatabase.get(application).library())
+    val repository: LibraryRepository = LibraryRepository(application, LibraryDatabase.get(application).library()),
+    scalable: Boolean = application.getSharedPreferences("spirits_v4", 0).getBoolean("feature.meow_spirits_v4", false)
 ) : AndroidViewModel(application) {
-    private val scalable = application.getSharedPreferences("spirits_v4", 0).getBoolean("feature.meow_spirits_v4", false)
     val books = (if (scalable) flowOf(emptyList<Book>()) else repository.dao.observeBooks()).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val catalog = books.map { withContext(Dispatchers.Default) { BookCatalog(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BookCatalog(emptyList()))

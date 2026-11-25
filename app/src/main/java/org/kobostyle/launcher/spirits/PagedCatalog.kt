@@ -29,24 +29,26 @@ class PagedCatalog(private val library: LibraryDao, private val dao: SpiritDao) 
             while (true) {
                 currentCoroutineContext().ensureActive()
                 val page = library.page(after); if (page.isEmpty()) break
-                page.forEach { project(it) }; after = page.last().identity
+                dao.catalogs(page.map(::project)); after = page.last().identity
             }
         }
         while (true) {
             currentCoroutineContext().ensureActive()
             val changes = library.changes(); if (changes.isEmpty()) break
+            val entries = mutableListOf<CatalogEntry>(); val removed = mutableListOf<String>()
             for (change in changes) {
                 currentCoroutineContext().ensureActive()
                 val book = library.book(change.identity)
-                if (book == null) dao.removeCatalog(change.identity) else project(book)
-                library.ack(change.identity, change.revision)
+                if (book == null) removed += change.identity else entries += project(book)
             }
+            dao.applyCatalog(entries, removed)
+            library.acknowledge(changes)
         }
     }
-    private suspend fun project(book: Book) {
+    private fun project(book: Book): CatalogEntry {
         val parts = BookFilename.parse(BookFilename.name(book))
-        dao.catalog(CatalogEntry(book.identity, parts.title ?: book.title, parts.author ?: book.author, parts.category.orEmpty(),
-            book.lastOpenedAt, book.scanStatus != "unavailable" && !LocalCurator.isAcceptanceFixture(book), bookVersion(book)))
+        return CatalogEntry(book.identity, parts.title ?: book.title, parts.author ?: book.author, parts.category.orEmpty(),
+            book.lastOpenedAt, book.scanStatus != "unavailable" && !LocalCurator.isAcceptanceFixture(book), bookVersion(book))
     }
     private fun where(filter: CatalogFilter): Pair<String, List<Any?>> {
         val clauses = mutableListOf<String>(); val args = mutableListOf<Any?>()

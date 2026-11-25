@@ -466,6 +466,10 @@ open class MainActivity : ComponentActivity() {
         catalogJob?.cancel()
         val requestedPage = page
         catalogJob = lifecycleScope.launch {
+            val loading = launch {
+                delay(500)
+                if (page == requestedPage) list.adapter = TextAdapter(listOf("正在準備書目索引，首次使用可能需要稍候……" to null))
+            }
             try {
                 val data = withContext(Dispatchers.IO) {
                     pagedCatalog.sync()
@@ -475,6 +479,7 @@ open class MainActivity : ComponentActivity() {
                         else -> pagedCatalog.page(if (requestedPage == "home") CatalogFilter() else CatalogFilter(searchText, selectedCategory, selectedAuthor, recentOnly), catalogOffset)
                     }
                 }
+                loading.cancel()
                 if (page != requestedPage) return@launch
                 if (data is BookPage) {
                     displayBooks = data.books; catalogTotal = data.count; catalogOffset = data.offset
@@ -509,6 +514,7 @@ open class MainActivity : ComponentActivity() {
                 }
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { list.adapter = TextAdapter(listOf("暫時無法讀取分頁索引；原書仍保留。" to null, "重試" to { renderList() })) }
+            finally { loading.cancel() }
         }
     }
     private fun librarianAction(action: DialogueAction, value: String) {

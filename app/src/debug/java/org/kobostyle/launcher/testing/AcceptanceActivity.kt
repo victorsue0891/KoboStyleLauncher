@@ -10,6 +10,14 @@ import org.kobostyle.launcher.ui.MainActivity
 
 /** Debug-only, non-exported harness. No intent extras can supply a repository or override settings. */
 class AcceptanceActivity : MainActivity() {
+    private val isolatedRuntime by lazy {
+        spiritTestRuntime ?: org.kobostyle.launcher.spirits.SpiritRuntime(application,
+            androidx.room.Room.inMemoryDatabaseBuilder(application, org.kobostyle.launcher.spirits.SpiritDatabase::class.java)
+                .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver()).addCallback(org.kobostyle.launcher.spirits.SpiritDatabase.SEARCH).build(),
+            org.kobostyle.launcher.librarian.CuratorTransport { _, _ -> error("No network in acceptance Activity") },
+            org.kobostyle.launcher.spirits.SpiritSettings(getSharedPreferences("acceptance_v4_legacy", 0)))
+    }
+    override fun spiritRuntime() = isolatedRuntime
     override fun librarianModelFactory(): ViewModelProvider.Factory = librarianFactory ?: super.librarianModelFactory()
     override fun controlPreferences(): android.content.SharedPreferences = getSharedPreferences("acceptance_controls", MODE_PRIVATE)
     fun acceptsKeyForTest(event: android.view.KeyEvent): Boolean = handleContentKey(event)
@@ -38,10 +46,11 @@ class AcceptanceActivity : MainActivity() {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             check(modelClass == LibraryViewModel::class.java)
-            return LibraryViewModel(application, checkNotNull(repository)) as T
+            return LibraryViewModel(application, checkNotNull(repository), isolatedRuntime.settings.enabled) as T
         }
     }
     companion object {
+        var spiritTestRuntime: org.kobostyle.launcher.spirits.SpiritRuntime? = null
         var librarianFactory: ViewModelProvider.Factory? = null
         var repository: LibraryRepository? = null
         var testFontScale = 1f

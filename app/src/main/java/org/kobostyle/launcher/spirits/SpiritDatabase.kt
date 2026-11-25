@@ -33,6 +33,11 @@ data class UsageEvent(@PrimaryKey val requestId: String, val action: String, val
 @Dao
 interface SpiritDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun catalog(entry: CatalogEntry)
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun catalogs(entries: List<CatalogEntry>)
+    @Transaction suspend fun applyCatalog(entries: List<CatalogEntry>, removed: List<String>) {
+        catalogs(entries)
+        removed.forEach { removeCatalog(it) }
+    }
     @Query("DELETE FROM catalog WHERE identity = :id") suspend fun removeCatalog(id: String)
     @Query("SELECT COUNT(*) FROM catalog") fun catalogCount(): Flow<Int>
     @Query("SELECT COUNT(*) FROM catalog") suspend fun count(): Int
