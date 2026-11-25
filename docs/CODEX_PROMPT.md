@@ -4,6 +4,8 @@
 
 ## 目前狀態
 
+- **V4 正式流程補驗**：使用者已手動選好合成 pack，SAF 匯入／第 3 章邊界／本機引用成功。已使用既有裝置 Key 完成使用者核准的兩次真實 AI（ask／refine 各一次）；usage 恰好兩筆 SUCCESS，本機總計 USD 0.000651。**兩次測試授權已用完，不得自行追加付費測試**。V4 開關往返與程序重啟保留原書、pack、人格及 ledger；目前 V4／付費書靈開啟，單次 USD 0.02，每次仍需 UI 確認，Key 未讀取。僅本輪電子紙／實體鍵人工觀察待回覆，畫面留在合成書靈歡迎頁。最新依 `docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md`。
+
 - **2026-11-25 V4 後續接機**：已安裝新版並啟用 V4，實際 13,618 本／4 來源／17 本開啟紀錄升級保留。批次索引修正與裝置測試 commit `5570af0`；106 項主機及 8 項不同實機測試分別通過，Lint 0 errors／61 warnings。最新正式 SAF 匯入、兩次使用者已核准的合成資料 AI 測試及人工顯示觀察，以 `docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md` 為準，未完成項不可推定通過。Key 未擷取、HOME 未更改；下列未接機狀態已被本段取代。
 
 - **最新 2026-11-25 V4**：`feature/meow-v4-book-spirits`，V3 基準 `b6ef3c1`、P0 稽核 `9f2d70a`。使用者授權 P1–P5 主機實作，已完成；106 項 JVM／Robolectric、2 項 Python 測試通過，Lint 0 errors／61 warnings。Leaf2 明確未連接，未執行 ADB、安裝或真實 API；P6 待接機。先讀 `docs/v4/IMPLEMENTATION_2026-11-25.md` 與 `KNOWLEDGE_PACK.md`。V4 預設關閉，入口「更多 → 書靈與費用設定」；新付費預設關閉，已啟用的 V3 Key／偏好保留。主書庫 schema 3、獨立 spirits schema 1／bundled SQLite FTS5；不可直接降版 APK。所有正式 API 入口共用 gateway，取消自動重試。下列紀錄為歷史版本。
