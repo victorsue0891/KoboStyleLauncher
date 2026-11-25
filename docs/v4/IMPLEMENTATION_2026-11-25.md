@@ -1,5 +1,7 @@
 # V4 書靈：P1–P5 主機開發與驗證
 
+同日後續使用者已接上 Leaf2，新版已覆蓋安裝；實機修正與最新結果以 [P6 驗收紀錄](DEVICE_ACCEPTANCE_2026-11-25.md) 為準。下方「未連接／待實機」描述保留為接機前的主機驗證範圍。
+
 日期：2026-11-25。使用者明確授權 P0 稽核後繼續 P1–P5；Leaf2 未連接，本輪沒有執行 ADB、安裝、HOME 操作或真實 API 請求。P6 實機驗收尚未完成。
 
 分支：`feature/meow-v4-book-spirits`。V3 基準 `b6ef3c1`；P0 稽核 commit `9f2d70a`；P1–P5 整合實作與測試 commit `d16331a`（資料結構、gateway 與 UI 跨階段相依，採單一整合提交）。原始規格包 `spec-librarian-v4/` 與 `spec-librarian/` 保留，不修改或整包提交。參見 [稽核](REPO_AUDIT.md)、[實作對照](IMPLEMENTATION_MAP.md)。

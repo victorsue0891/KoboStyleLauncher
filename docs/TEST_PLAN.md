@@ -1,5 +1,9 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-25 V4 接機驗證
+
+同日後續 Leaf2 已連線授權，新版已安裝。106 項 JVM／Robolectric 回歸通過，Lint 0 errors／61 warnings；V4 真實書庫／原生 DB／掃描／UI 四項及既有 Keystore／館員開書／分類／書庫四項實機測試分別通過。實際 13,618 本書與來源升級前後逐列一致，50 頁查詢 P95 267 ms，完成索引後程序冷啟動首畫面 P95 2010 ms。正式 SAF／真實 AI／人工顯示項目的最新狀態、失敗後修正及重現命令見 [P6 驗收紀錄](v4/DEVICE_ACCEPTANCE_2026-11-25.md)。下方同日「未接機」屬接機前的紀錄。
+
 ## 2026-11-25 V4 P1–P5 主機驗證
 
 `assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` exit 0，106 tests／0 failures／0 errors／0 skipped，Lint 0 errors／61 warnings；Python adapter 2/2 通過。包含共用 gateway／未知扣款、0／300／13,618／20,000 合成書各 10 次 lifecycle 零 API、Room 2→3 migration、FTS5／50 頁／增量索引、掃描 checkpoint、Lite、單書章節邊界、引用白名單、問答連按及知識包 rollback。實際命令、階段結果、主機預覽與限制見 [V4 完整紀錄](v4/IMPLEMENTATION_2026-11-25.md)。

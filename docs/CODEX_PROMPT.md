@@ -4,6 +4,8 @@
 
 ## 目前狀態
 
+- **2026-11-25 V4 後續接機**：已安裝新版並啟用 V4，實際 13,618 本／4 來源／17 本開啟紀錄升級保留。批次索引修正與裝置測試 commit `5570af0`；106 項主機及 8 項不同實機測試分別通過，Lint 0 errors／61 warnings。最新正式 SAF 匯入、兩次使用者已核准的合成資料 AI 測試及人工顯示觀察，以 `docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md` 為準，未完成項不可推定通過。Key 未擷取、HOME 未更改；下列未接機狀態已被本段取代。
+
 - **最新 2026-11-25 V4**：`feature/meow-v4-book-spirits`，V3 基準 `b6ef3c1`、P0 稽核 `9f2d70a`。使用者授權 P1–P5 主機實作，已完成；106 項 JVM／Robolectric、2 項 Python 測試通過，Lint 0 errors／61 warnings。Leaf2 明確未連接，未執行 ADB、安裝或真實 API；P6 待接機。先讀 `docs/v4/IMPLEMENTATION_2026-11-25.md` 與 `KNOWLEDGE_PACK.md`。V4 預設關閉，入口「更多 → 書靈與費用設定」；新付費預設關閉，已啟用的 V3 Key／偏好保留。主書庫 schema 3、獨立 spirits schema 1／bundled SQLite FTS5；不可直接降版 APK。所有正式 API 入口共用 gateway，取消自動重試。下列紀錄為歷史版本。
 
 - 最新同日更新：正式喵館員排除已知的 25 本驗收書，離線與 AI 均基於其餘實際館藏；不刪書／索引。Leaf2 真實館藏稽核 1/1 通過（8,141 本符合候選條件，核對 20 本、推薦 3 本）。主機 84 tests 通過，Lint 0 errors／45 warnings，新版已安裝。更換另一把 Key 後，正式真實 API 回傳 HTTP 200／ok（計數 4→5，10,430 ms，input 1,119／output 415 tokens）；重複同組推薦命中快取（42 ms），計數仍為 5。此前 401／invalid_api_key 為歷史失敗，不能當作最新狀態。詳 `docs/LIBRARIAN_DEVICE_2026-11-20.md`。

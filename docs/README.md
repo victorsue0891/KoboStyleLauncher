@@ -6,6 +6,7 @@
 |---|---|
 | [產品規格](../SPEC.md) | 專案範圍、安全邊界與設計要求 |
 | [V4 書靈開發與主機驗證](v4/IMPLEMENTATION_2026-11-25.md) | P1–P5 實作、費用控制、分頁／續掃、Lite／單書問答、預覽與 P6 接機清單 |
+| [V4 Leaf2 實機驗收](v4/DEVICE_ACCEPTANCE_2026-11-25.md) | 13,618 本升級、批次索引修正、效能、原生測試與正式畫面驗收 |
 | [知識包轉換與匯入](v4/KNOWLEDGE_PACK.md) | Windows 離線 adapter、SAF JSON 合約、大小／hash／章節限制 |
 | [裝置摘要](DEVICE_REPORT.md) | 已確認的裝置能力及後續驗證摘要 |
 | [測試計畫與結果](TEST_PLAN.md) | 自動測試命令、實機測試及未完成項目；依日期保留歷史結果 |
