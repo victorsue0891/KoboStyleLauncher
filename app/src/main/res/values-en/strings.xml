@@ -1,4 +1,17 @@
 <resources>
+    <string name="librarian">Cat librarian</string>
+    <string name="librarian_settings">Librarian AI settings</string>
+    <string name="book_categories">Categories</string>
+    <string name="by_author">Browse by author</string>
+    <string name="uncategorized">Uncategorized</string>
+    <string name="back_to_parent">Back</string>
+    <string name="search_authors">Search authors</string>
+    <string name="no_authors">No matching authors. Use the search button to find an author.</string>
+    <string-array name="book_category_labels">
+        <item>Fiction</item><item>Psychology</item><item>Literature</item><item>Leisure and travel</item>
+        <item>Social sciences</item><item>Popular science</item><item>Business</item><item>Education</item>
+        <item>Personal finance</item><item>Languages</item><item>Mathematics</item>
+    </string-array>
     <string name="home_recovery">Home and recovery</string>
     <string name="home_is_default">KoboStyle is the default Home</string>
     <string name="home_is_app">Currently used as an ordinary app</string>
@@ -28,9 +41,9 @@
     <string name="volume_paging_off">Physical page keys: off</string>
     <string name="page_direction_normal">Page key direction: normal</string>
     <string name="page_direction_reversed">Page key direction: reversed</string>
-    <string name="page_keys_note">When enabled, volume keys page through Home and Library only. NeoReader and other apps keep their own key behavior. Reverse the direction if preferred.</string>
+    <string name="page_keys_note">When enabled, volume keys page through Home, categories, authors and Library. NeoReader and other apps keep their own key behavior. Reverse the direction if preferred.</string>
     <string name="app_name">KoboStyle Library</string>
-    <string name="home">Home</string><string name="library">My Books</string><string name="apps">Apps</string><string name="settings">More</string>
+    <string name="home">Home</string><string name="library">All books</string><string name="apps">Apps</string><string name="settings">More</string>
     <string name="continue_reading">Continue reading</string><string name="recent">Recently opened</string>
     <string name="empty">Your library is ready. Add EPUB/PDF books or a book folder in Library.</string>
     <string name="no_recent">No open events yet. Choose a book below.</string><string name="bookshelf">My bookshelf</string>

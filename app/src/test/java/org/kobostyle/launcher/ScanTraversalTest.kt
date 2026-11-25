@@ -131,9 +131,11 @@ class ScanTraversalTest {
         repository.scan { }
         assertEquals("Cached title", dao.book(book().identity)!!.title)
         assertEquals("ok", dao.book(book().identity)!!.scanStatus)
+        assertEquals("new.pdf", dao.book(book().identity)!!.displayName)
         provider.modified++
         repository.scan { }
         assertEquals("new", dao.book(book().identity)!!.title)
+        assertEquals("new.pdf", dao.book(book().identity)!!.displayName)
         assertEquals("metadata_error", dao.book(book().identity)!!.scanStatus)
         assertEquals(123L, dao.book(book().identity)!!.lastOpenedAt)
     }
@@ -155,5 +157,33 @@ class ScanTraversalTest {
         provider.denyRead = true
         repository.scan { }
         assertNotEquals("ok", dao.book(book().identity)!!.scanStatus)
+    }
+    @Test fun v4CancelledScanResumesCheckpointAndPreservesHistory() = fixture { dao, provider, context ->
+        context.getSharedPreferences("spirits_v4", 0).edit().putBoolean("feature.meow_spirits_v4", true).commit()
+        provider.textFiles = 10
+        dao.index(book()); dao.opened(book().identity, 123)
+        try {
+            LibraryRepository(context, dao).scan { if (it.running && it.books > 0) throw kotlinx.coroutines.CancellationException("Synthetic pause") }
+            fail("Expected cancellation")
+        } catch (_: kotlinx.coroutines.CancellationException) { }
+        val paused = dao.scanJob(root.toString())!!
+        assertEquals(1, paused.books); assertEquals(123L, dao.book(book().identity)!!.lastOpenedAt)
+        assertNotNull(dao.nextNode(root.toString()))
+        LibraryRepository(context, dao).scan { }
+        assertNull(dao.scanJob(root.toString())); assertEquals(0, dao.nodeCount(root.toString()))
+        assertEquals("ok", dao.sources().single().status); assertEquals(123L, dao.book(book().identity)!!.lastOpenedAt)
+    }
+    @Test fun v4ProviderFailureAndLimitsDoNotMarkUnvisitedBooksMissing() = fixture { dao, provider, context ->
+        context.getSharedPreferences("spirits_v4", 0).edit().putBoolean("feature.meow_spirits_v4", true).commit()
+        dao.index(book()); provider.textFiles = 10
+        var limited = false
+        LibraryRepository(context, dao, 5).scan { limited = it.limited }
+        assertTrue(limited); assertEquals("ok", dao.book(book().identity)!!.scanStatus)
+        provider.failure = IllegalStateException("Synthetic offline provider")
+        LibraryRepository(context, dao).scan { }
+        assertEquals("scan_error", dao.sources().single().status); assertEquals("ok", dao.book(book().identity)!!.scanStatus)
+        provider.failure = null
+        LibraryRepository(context, dao).scan { }
+        assertEquals("ok", dao.sources().single().status)
     }
 }

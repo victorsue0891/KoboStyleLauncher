@@ -35,7 +35,11 @@ class LaunchTest {
         assertEquals(listOf("org.kobostyle.launcher.ui.MainActivity"), activities.filter { it.exported }.map { it.name })
         assertEquals(android.content.pm.ActivityInfo.LAUNCH_SINGLE_TASK, activities.single { it.name.endsWith(".ui.MainActivity") }.launchMode)
         val permissions = manager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
-        for (forbidden in listOf("INTERNET", "MANAGE_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE")) assertFalse(permissions.contains("android.permission.$forbidden"))
+        assertTrue(permissions.contains("android.permission.INTERNET"))
+        val appInfo = manager.getApplicationInfo(context.packageName, 0)
+        assertEquals(0, appInfo.flags and android.content.pm.ApplicationInfo.FLAG_USES_CLEARTEXT_TRAFFIC)
+        assertEquals(0, appInfo.flags and android.content.pm.ApplicationInfo.FLAG_ALLOW_BACKUP)
+        for (forbidden in listOf("MANAGE_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE")) assertFalse(permissions.contains("android.permission.$forbidden"))
     }
     @Test fun repeatedHomeIntentReturnsToHomeWithoutOpeningSystemUi() {
         val controller = org.robolectric.Robolectric.buildActivity(org.kobostyle.launcher.ui.MainActivity::class.java).setup()

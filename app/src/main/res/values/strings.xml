@@ -1,4 +1,17 @@
 <resources>
+    <string name="librarian">喵館員</string>
+    <string name="librarian_settings">喵館員 AI 設定</string>
+    <string name="book_categories">書籍分類</string>
+    <string name="by_author">按作者分類</string>
+    <string name="uncategorized">未分類</string>
+    <string name="back_to_parent">返回上一層</string>
+    <string name="search_authors">搜尋作者</string>
+    <string name="no_authors">沒有符合的作者。可用右上角搜尋作者名稱。</string>
+    <string-array name="book_category_labels">
+        <item>小說</item><item>心理</item><item>文學</item><item>休閒旅遊</item>
+        <item>社科</item><item>科普</item><item>商管</item><item>教育</item>
+        <item>理財</item><item>語言</item><item>數學</item>
+    </string-array>
     <string name="home_recovery">桌面與復原</string>
     <string name="home_is_default">KoboStyle 已是預設桌面</string>
     <string name="home_is_app">目前以一般 App 使用</string>
@@ -28,10 +41,10 @@
     <string name="volume_paging_off">實體鍵翻頁：關閉</string>
     <string name="page_direction_normal">翻頁鍵方向：一般</string>
     <string name="page_direction_reversed">翻頁鍵方向：反向</string>
-    <string name="page_keys_note">開啟後，僅在書房首頁與書庫將音量鍵用來翻頁；不更改 NeoReader 或其他 App 的按鍵設定。若方向不合習慣，可切換方向。</string>
+    <string name="page_keys_note">開啟後，可在書房首頁、分類、作者與書庫使用音量鍵翻頁；不更改 NeoReader 或其他 App 的按鍵設定。若方向不合習慣，可切換方向。</string>
     <string name="app_name">KoboStyle 書房</string>
     <string name="home">首頁</string>
-    <string name="library">我的書籍</string>
+    <string name="library">全部書籍</string>
     <string name="apps">應用程式</string>
     <string name="settings">更多</string>
     <string name="continue_reading">繼續閱讀</string>

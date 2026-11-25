@@ -1,5 +1,51 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-25 韌體相容性
+
+Leaf2 BOOX 4.0.2／Android 11／build 10545：`FirmwareCompatibilityTest` 兩項、`LibrarianKeyStoreTest` 一項與 `SpiritDeviceAcceptanceTest` 四項，`OK (7 tests)`／37.896 秒。`assembleDebugAndroidTest lintDebug` exit 0，Lint 0 errors／61 warnings；正式程式未修改，未重跑已通過的 106 項主機測試。測試前後資料一致、零新增付費 API。其他韌體未測；前提、精確命令、能力查詢與實際操作的界線見 [相容性報告](FIRMWARE_COMPATIBILITY_2026-11-25.md)。
+
+## 2026-11-25 V4 接機驗證
+
+同日正式畫面驗收：使用者手動選取合成 JSON 後，SAF 對書確認／四章匯入成功；已讀第 3 章的本機片段及引用正確。兩次明確核准的真實 AI（問答、歡迎語精修各一次）均成功，V4 ledger 恰好兩筆 SUCCESS，本機核算總計 USD 0.000651，沒有重送。V4 關閉／開啟、程序重啟後書靈／知識包／費用保留，原書庫資料不變。使用者已回覆「確認ok, 請繼續」，確認本輪電子紙文字／刷新與上下實體鍵捲動可接受，P6 本輪驗收完成；長期待機等範圍限制仍依實機報告保留。
+
+同日後續 Leaf2 已連線授權，新版已安裝。106 項 JVM／Robolectric 回歸通過，Lint 0 errors／61 warnings；V4 真實書庫／原生 DB／掃描／UI 四項及既有 Keystore／館員開書／分類／書庫四項實機測試分別通過。實際 13,618 本書與來源升級前後逐列一致，50 頁查詢 P95 267 ms，完成索引後程序冷啟動首畫面 P95 2010 ms。正式 SAF／真實 AI／人工顯示項目的最新狀態、失敗後修正及重現命令見 [P6 驗收紀錄](v4/DEVICE_ACCEPTANCE_2026-11-25.md)。下方同日「未接機」屬接機前的紀錄。
+
+## 2026-11-25 V4 P1–P5 主機驗證
+
+`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` exit 0，106 tests／0 failures／0 errors／0 skipped，Lint 0 errors／61 warnings；Python adapter 2/2 通過。包含共用 gateway／未知扣款、0／300／13,618／20,000 合成書各 10 次 lifecycle 零 API、Room 2→3 migration、FTS5／50 頁／增量索引、掃描 checkpoint、Lite、單書章節邊界、引用白名單、問答連按及知識包 rollback。實際命令、階段結果、主機預覽與限制見 [V4 完整紀錄](v4/IMPLEMENTATION_2026-11-25.md)。
+
+全部假資料／fake transport，沒有真實 API。未接 Leaf2、未執行 ADB 或 instrumentation；APK 建置成功不代表安裝／性能／電子紙／SAF picker／真實問答已驗收。下一步是該文件 P6 清單。以下保留歷史結果。
+
+## 2026-11-20 更換 Key 後真實 API／快取通過
+
+正式 Leaf2 重新要求 AI 推薦，`gpt-4.1-mini` 回傳 **HTTP 200／ok**，耗時 10,430 ms，input 1,119／output 415 tokens，呼叫計數 4→5。畫面確認 OpenAI 推薦及 8,141 本館藏／20 本可讀候選；回應通過結構與候選 ID 驗證。再次要求同組推薦命中快取（42 ms），計數維持 5。沒有修改程式、重新建置或讀取 Key；未重跑不相關測試。詳 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。
+
+## 2026-11-20 新 Key 重試與 HTTP 診斷
+
+原版重試仍 authentication（計數 2→3，2,013 ms）；新增僅記 HTTP 狀態及允許清單錯誤碼的診斷後，正式 Leaf2 重試明確收到 **401／invalid_api_key**（3→4，1,022 ms），正常回退離線，真實 AI 尚未通過。84 項 JVM／Robolectric 測試全數通過，Lint 0 errors／45 warnings，兩份 APK 建置成功，主 APK 已覆蓋安裝。書庫／來源／開啟紀錄摘要與 HOME 未變。完整命令、隱私保護及限制見 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。
+
+## 2026-11-20 OpenAI 真實重試
+
+正式 App 再次送出推薦請求，呼叫計數 1→2，耗時 2,955 ms，結果仍為 `authentication`（現有程式合併 HTTP 401／403）。畫面確認回退離線，真實 AI 推薦未通過。沒有讀取 Key、修改程式或重跑不相關測試。詳 [最新實機紀錄](LIBRARIAN_DEVICE_2026-11-20.md)。
+
+## 2026-11-20 實際館藏推薦範圍
+
+離線與 AI 共用篩選排除兩個已知驗收資料夾，保留原始索引與文件。主機 81 tests 全部通過，Lint 0 errors／43 warnings。覆蓋安裝後 `LibrarianRealLibraryTest` 1/1 通過，實際 8,166 筆索引排除 25 本驗收書，8,141 本可參與篩選；離線及模擬 AI 各核對 20 本可存取候選、產生 3 本真實館藏卡。正式介面亦已操作確認數量。沒有呼叫真實 API，更新前後書庫／來源／開啟時間完全一致。完整命令及限制見 [最新實機結果](LIBRARIAN_DEVICE_2026-11-20.md)。
+
+## 2026-11-20 喵館員接機驗收
+
+使用者後續接上並授權 Leaf2。真實 Keystore、喵館員合成書庫 UI／三本書的 ACTION_VIEW 與 chooser，以及既有分類／書庫回歸共 4 項 instrumentation 測試通過。79 項 JVM 測試重新通過，Lint 0 errors／43 warnings。升級前後 8,166 本書／4 個來源及開啟紀錄逐列一致；尚待真實 API 與人工顯示觀察。確切命令、測試過程遇到的限制及最新結果見 [實機驗收](LIBRARIAN_DEVICE_2026-11-20.md)。以下為較早的主機開發紀錄。
+
+## 2026-11-20 喵館員與 OpenAI
+
+`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 通過，79 項 JVM／Robolectric 測試，0 failures／errors／skipped；Lint 0 errors／43 warnings；APK 簽章驗證通過。包含狀態機、20 本合成書介面流程、8,166 筆候選篩選、橫向字級 1.3、加密重存／竄改、取消、API 錯誤與回應驗證。網路全部使用 mock，不傳送真實 API 請求。新增 11 個 Lint warnings 為 ViewConstructor 1、UseKtx 5、SetTextI18n 5；未新增 error 或用 baseline 隱藏警告。
+
+Leaf2 本輪未連線，未執行 ADB 或安裝。Keystore instrumentation 測試已建置但未執行，真實 API、喵館員開書、電子紙與實體鍵回歸均待實機。完整命令、已完成／未完成／阻礙與接機程序見 [喵館員紀錄](LIBRARIAN_2026-11-20.md)。以下日期為歷史結果。
+
+## 2026-11-18 書籍分類
+
+首頁分類、按作者瀏覽／搜尋、分類返回與旋轉狀態已實作。`assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug --console plain` 通過，43 項 JVM 測試無失敗，Lint 0 errors／32 warnings。`CategoryUiAcceptanceTest` 與 `ReaderUiAcceptanceTest` 實機 `OK (2 tests)`，使用獨立合成書庫。真實書庫升級前後 8,166 本的原有欄位及四個來源完全一致；沒有清空索引或重掃整個書庫。完整命令與限制見 [分類驗收](CATEGORIES_2026-11-18.md)。
+
 ## 2026-11-18 公開儲存庫整理驗證
 
 本輪只整理公開文件、忽略規則及文字格式，未變更應用程式行為、安裝 APK 或操作實機。從 Git index 匯出僅含待上傳檔案的乾淨副本；副本沒有原工作目錄的建置產物或 `local.properties`，透過環境變數使用已安裝的 JDK 17、Android SDK 與既有 Gradle 下載快取。

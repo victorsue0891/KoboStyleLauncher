@@ -29,21 +29,55 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import org.kobostyle.launcher.R
 import org.kobostyle.launcher.data.db.Book
+import org.kobostyle.launcher.data.books.BookCatalog
+import org.kobostyle.launcher.data.books.BookFilename
 import org.kobostyle.launcher.reader.NeoReaderBridge
 import org.kobostyle.launcher.platform.HomeRoleHelper
+import org.kobostyle.launcher.librarian.*
+import org.kobostyle.launcher.spirits.*
 import java.text.DateFormat
 import java.util.Date
 
 private data class ShelfRow(val key: String, val kind: String = "book", val text: String = "", val book: Book? = null, val books: List<Book> = emptyList())
 
 open class MainActivity : ComponentActivity() {
+    protected open fun spiritRuntime(): SpiritRuntime = SpiritRuntime.get(application)
     protected open fun libraryModelFactory(): androidx.lifecycle.ViewModelProvider.Factory = defaultViewModelProviderFactory
     protected open fun controlPreferences(): SharedPreferences = getSharedPreferences("reading_controls", MODE_PRIVATE)
     private var volumePaging = false
     private var reversePaging = false
     private val model: LibraryViewModel by viewModels { libraryModelFactory() }
+    protected open fun librarianModelFactory() = object : androidx.lifecycle.ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+            check(modelClass == LibrarianViewModel::class.java)
+            return LibrarianViewModel.create(application, model.repository, v4::confirm) as T
+        }
+    }
+    private val librarian: LibrarianViewModel by viewModels { librarianModelFactory() }
+    private lateinit var librarianPanel: LibrarianPanel
+    private lateinit var spiritPanel: SpiritPanel
+    private val spirit: SpiritViewModel by viewModels {
+        object : androidx.lifecycle.ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST") override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                val network = application.getSystemService(ConnectivityManager::class.java)
+                return SpiritViewModel(SpiritRepository(v4.database, model.repository.dao), v4.settings, librarian.preferences, AndroidKeyVault(application), v4.gateway, {
+                    network.getNetworkCapabilities(network.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                }) as T
+            }
+        }
+    }
+    private var selectedSpiritId: String? = null
+    private var choosingSpirit = false
+    private var pendingPackBook: String? = null
+    private var importJob: Job? = null
+    private val packPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val id = pendingPackBook; pendingPackBook = null
+        if (uri != null && id != null) importKnowledge(id, uri)
+    }
     private lateinit var bridge: NeoReaderBridge
     private val homeRole by lazy { HomeRoleHelper(this) }
     private lateinit var content: LinearLayout
@@ -63,19 +97,49 @@ open class MainActivity : ComponentActivity() {
     private var choosingTree = false
     private var recentOnly = false
     private var searchText = ""
+    private var selectedCategory: String? = null
+    private var selectedAuthor: String? = null
+    private var authorQuery = ""
+    private var catalog = BookCatalog(emptyList())
     private var displayBooks: List<Book> = emptyList()
+    private val v4 by lazy { spiritRuntime() }
+    private val pagedCatalog by lazy { PagedCatalog(model.repository.dao, v4.database.dao()) }
+    private var catalogJob: Job? = null
+    private var catalogOffset = 0
+    private var catalogTotal = 0
+    private var catalogRecent = 0
+    private val diagnosticPicker = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) lifecycleScope.launch {
+            val report = librarian.preferences.diagnostics().toString(2)
+            val saved = withContext(Dispatchers.IO) {
+                try { contentResolver.openOutputStream(uri, "wt")?.use { it.write(report.toByteArray(Charsets.UTF_8)); true } ?: false }
+                catch (_: Exception) { false }
+            }
+            Toast.makeText(this@MainActivity, if (saved) "已匯出診斷報告" else "無法寫入診斷報告", Toast.LENGTH_LONG).show()
+        }
+    }
     private val picker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) result.data?.let { data ->
             val uris = data.clipData?.let { clip -> (0 until clip.itemCount).map { clip.getItemAt(it).uri } } ?: listOfNotNull(data.data)
             model.add(uris, choosingTree, data.flags)
         }
     }
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        v4.bindConsent(this)
         page = savedInstanceState?.getString("page") ?: "home"
         choosingTree = savedInstanceState?.getBoolean("choosingTree") ?: false
         recentOnly = savedInstanceState?.getBoolean("recentOnly") ?: false
         searchText = savedInstanceState?.getString("searchText").orEmpty()
+        selectedCategory = savedInstanceState?.getString("selectedCategory")
+        selectedAuthor = savedInstanceState?.getString("selectedAuthor")
+        authorQuery = savedInstanceState?.getString("authorQuery").orEmpty()
+        catalogOffset = savedInstanceState?.getInt("catalogOffset") ?: 0
+        selectedSpiritId = savedInstanceState?.getString("spiritBook")
+        choosingSpirit = savedInstanceState?.getBoolean("choosingSpirit") ?: false
+        pendingPackBook = savedInstanceState?.getString("packBook")
+        if (page == "spirit" && !v4.settings.enabled) page = "librarian"
         volumePaging = controlPreferences().getBoolean("volume_paging", false)
         reversePaging = controlPreferences().getBoolean("reverse_paging", false)
         bridge = NeoReaderBridge(this)
@@ -113,12 +177,23 @@ open class MainActivity : ComponentActivity() {
         }
         bookAdapter = BookAdapter()
         grid.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-            override fun getSpanSize(position: Int): Int = if (page == "library" && list.adapter === bookAdapter && bookAdapter.currentList.getOrNull(position)?.kind == "book") 1 else grid.spanCount
+            override fun getSpanSize(position: Int): Int = when {
+                page == "categories" && position >= 2 -> 1
+                page == "library" && list.adapter === bookAdapter && bookAdapter.currentList.getOrNull(position)?.kind == "book" -> 1
+                else -> grid.spanCount
+            }
         }
         content.addView(list, LinearLayout.LayoutParams(-1, 0, 1f))
+        librarianPanel = LibrarianPanel(this, ::librarianAction, ::showLibrarianSettings, if (!v4.settings.enabled) null else {
+            { val book = librarian.state.value.card?.book?.takeIf { librarian.state.value.stage == DialogueStage.DETAIL }
+                if (book != null) showSpirit(book.identity) else { navigate("library"); choosingSpirit = true; renderList() } }
+        }).apply { visibility = View.GONE }
+        content.addView(librarianPanel, LinearLayout.LayoutParams(-1, 0, 1f))
+        spiritPanel = SpiritPanel(this, ::spiritAction).apply { visibility = View.GONE }
+        content.addView(spiritPanel, LinearLayout.LayoutParams(-1, 0, 1f))
         content.addView(rule())
         val bottom = LinearLayout(this).apply { setPadding(dp(8), dp(4), dp(8), dp(2)) }
-        val tabs = listOf(Triple("home", R.string.home, ReaderIcon.Kind.HOME), Triple("library", R.string.library, ReaderIcon.Kind.BOOKS), Triple("apps", R.string.apps, ReaderIcon.Kind.APPS), Triple("settings", R.string.settings, ReaderIcon.Kind.MORE))
+        val tabs = listOf(Triple("home", R.string.home, ReaderIcon.Kind.HOME), Triple("library", R.string.library, ReaderIcon.Kind.BOOKS), Triple("librarian", R.string.librarian, ReaderIcon.Kind.CAT), Triple("settings", R.string.settings, ReaderIcon.Kind.MORE))
         tabs.forEach { (key, title, icon) ->
             val tab = button(getString(title), outlined = false) { navigate(key) }.apply {
                 textSize = 14f; minHeight = dp(64); gravity = Gravity.CENTER
@@ -142,6 +217,13 @@ open class MainActivity : ComponentActivity() {
         homeRole.rememberOriginal()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (page == "spirit") { navigate("librarian"); return }
+                if (page == "apps") { navigate("settings"); return }
+                if (page == "librarian") {
+                    if (librarian.state.value.stage == DialogueStage.WELCOME) navigate("home") else librarianAction(DialogueAction.BACK, "")
+                    return
+                }
+                if (goBackInCatalog()) return
                 if (homeRole.isDefault()) {
                     if (page != "home") navigate("home")
                 } else {
@@ -153,10 +235,14 @@ open class MainActivity : ComponentActivity() {
         })
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { model.books.collect { displayBooks = it; renderList() } }
+                launch { model.catalog.collect { catalog = it; displayBooks = it.books; renderList() } }
+                if (v4.settings.enabled) launch { model.repository.dao.observeChanges().debounce(500).collect { renderList() } }
+                if (v4.settings.enabled) launch { spirit.state.collect { if (page == "spirit") spiritPanel.render(it) } }
+                launch { librarian.state.collect { if (page == "librarian") librarianPanel.render(it, librarian.preferences.config()) } }
                 launch { combine(model.progress, model.message, model.sources) { p, m, s -> Triple(p, m, s) }.collect { updateScanStatus() } }
             }
         }
+        if (page == "spirit") selectedSpiritId?.let { spirit.select(it) }
     }
     private fun columns(): Int {
         val width = resources.configuration.screenWidthDp / resources.configuration.fontScale.coerceAtLeast(1f)
@@ -167,11 +253,27 @@ open class MainActivity : ComponentActivity() {
             else -> 2
         }
     }
-    private fun navigate(destination: String, recent: Boolean = false, query: String = "") {
+    private fun navigate(destination: String, recent: Boolean = false, query: String = "", category: String? = null, author: String? = null) {
+        if (page == "spirit" && destination != "spirit") { spirit.cancel(); importJob?.cancel() }
+        if (page == "librarian" && destination != "librarian") librarian.leavePage()
         page = destination; recentOnly = recent; searchText = query
+        if (destination !in setOf("library", "categories", "authors")) choosingSpirit = false
+        catalogOffset = 0
+        selectedCategory = category; selectedAuthor = author
         render(); list.scrollToPosition(0)
     }
+    private fun goBackInCatalog(): Boolean = when {
+        page == "library" && selectedAuthor != null -> { navigate("authors"); true }
+        page == "authors" || (page == "library" && selectedCategory != null) -> { navigate("categories"); true }
+        page == "categories" -> { navigate("home"); true }
+        else -> false
+    }
     override fun onResume() { super.onResume(); updateStatus(); model.refresh() }
+    override fun onStop() {
+        if (!isChangingConfigurations && page == "spirit") spirit.cancel()
+        if (!isChangingConfigurations && page == "librarian") librarian.leavePage()
+        super.onStop()
+    }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -180,22 +282,32 @@ open class MainActivity : ComponentActivity() {
     protected open fun handleContentKey(event: KeyEvent): Boolean {
         val standard = event.keyCode == KeyEvent.KEYCODE_PAGE_UP || event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN
         val volume = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN
-        if ((page == "home" || page == "library") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
+        if (page in listOf("home", "library", "categories", "authors", "librarian", "spirit") && (standard || (volumePaging && volume)) && ::list.isInitialized) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 var direction = if (event.keyCode == KeyEvent.KEYCODE_PAGE_DOWN || event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) 1 else -1
                 if (!standard && reversePaging) direction = -direction
-                list.scrollBy(0, direction * (list.height * .9f).toInt())
+                if (page == "spirit") spiritPanel.scrollBy(0, direction * (spiritPanel.height * .9f).toInt())
+                else if (page == "librarian") {
+                    if (librarian.state.value.stage == DialogueStage.CARDS && librarian.state.value.card != null)
+                        librarianAction(if (direction > 0) DialogueAction.NEXT else DialogueAction.PREVIOUS, "")
+                    else librarianPanel.scrollBy(0, direction * (librarianPanel.height * .9f).toInt())
+                } else list.scrollBy(0, direction * (list.height * .9f).toInt())
             }
             return true
         }
         return false
     }
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("spiritBook", selectedSpiritId); outState.putString("packBook", pendingPackBook)
+        outState.putBoolean("choosingSpirit", choosingSpirit)
+        outState.putInt("catalogOffset", catalogOffset)
         outState.putString("page", page); outState.putBoolean("choosingTree", choosingTree)
         outState.putBoolean("recentOnly", recentOnly); outState.putString("searchText", searchText)
+        outState.putString("selectedCategory", selectedCategory); outState.putString("selectedAuthor", selectedAuthor)
+        outState.putString("authorQuery", authorQuery)
         super.onSaveInstanceState(outState)
     }
-    override fun onDestroy() { bridge.close(); super.onDestroy() }
+    override fun onDestroy() { v4.unbindConsent(this); bridge.close(); super.onDestroy() }
     private fun updateStatus() {
         // Snapshot on resume only: no periodic clock or refresh work on E Ink.
         clock.text = DateFormat.getTimeInstance(DateFormat.SHORT).format(Date())
@@ -231,8 +343,18 @@ open class MainActivity : ComponentActivity() {
         scanButton.isEnabled = !p.running; scanButton.imageAlpha = if (p.running) 100 else 255
     }
     private fun render() {
+        list.visibility = if (page in setOf("librarian", "spirit")) View.GONE else View.VISIBLE
+        librarianPanel.visibility = if (page == "librarian") View.VISIBLE else View.GONE
+        spiritPanel.visibility = if (page == "spirit") View.VISIBLE else View.GONE
+        grid.spanCount = if (page == "categories") if (resources.configuration.screenWidthDp / resources.configuration.fontScale >= 360) 2 else 1 else columns()
         actions.removeAllViews(); libraryActions.clear()
-        actions.visibility = if (page == "library") View.VISIBLE else View.GONE
+        val inCatalog = page in listOf("categories", "authors") || selectedCategory != null || selectedAuthor != null
+        actions.visibility = if (page == "library" || inCatalog) View.VISIBLE else View.GONE
+        if (inCatalog) actions.addView(button(getString(R.string.back_to_parent)) { goBackInCatalog() })
+        if (page == "apps") {
+            actions.visibility = View.VISIBLE
+            actions.addView(button(getString(R.string.back_to_parent)) { navigate("settings") })
+        }
         if (page == "library") {
             libraryActions += button(getString(R.string.add_folder)) { pick(true) }
             libraryActions += button(getString(R.string.add_files)) { pick(false) }
@@ -240,7 +362,7 @@ open class MainActivity : ComponentActivity() {
             libraryActions.forEach { actions.addView(it, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(8) }) }
         }
         navigation.forEach { (key, tab) ->
-            val selected = key == page
+            val selected = key == page || (key == "librarian" && page == "spirit") || (key == "library" && page in listOf("categories", "authors")) || (key == "settings" && page == "apps")
             tab.isSelected = selected; tab.setTypeface(Typeface.DEFAULT, if (selected) Typeface.BOLD else Typeface.NORMAL)
             tab.setCompoundDrawablesWithIntrinsicBounds(null, ReaderIcon(tab.tag as ReaderIcon.Kind, resources.displayMetrics.density, selected), null, null)
             tab.background = null
@@ -248,10 +370,14 @@ open class MainActivity : ComponentActivity() {
         updateScanStatus(); renderList()
     }
     private fun showSearch() {
-        val input = EditText(this).apply { id = R.id.search_input; setSingleLine(true); hint = getString(R.string.search_hint); setText(searchText) }
-        AlertDialog.Builder(this).setTitle(R.string.search_books).setView(input)
-            .setPositiveButton(R.string.search_action) { _, _ -> navigate("library", query = input.text.toString().trim()) }
-            .setNeutralButton(R.string.show_all) { _, _ -> navigate("library") }
+        val authors = page == "authors"
+        val input = EditText(this).apply { id = R.id.search_input; setSingleLine(true); hint = getString(if (authors) R.string.search_authors else R.string.search_hint); setText(if (authors) authorQuery else searchText) }
+        AlertDialog.Builder(this).setTitle(if (authors) R.string.search_authors else R.string.search_books).setView(input)
+            .setPositiveButton(R.string.search_action) { _, _ ->
+                if (authors) { authorQuery = input.text.toString().trim(); navigate("authors") }
+                else navigate("library", query = input.text.toString().trim(), category = selectedCategory, author = selectedAuthor)
+            }
+            .setNeutralButton(R.string.show_all) { _, _ -> if (authors) { authorQuery = ""; navigate("authors") } else navigate("library") }
             .setNegativeButton(android.R.string.cancel, null).show()
     }
     private fun pick(tree: Boolean) {
@@ -264,7 +390,26 @@ open class MainActivity : ComponentActivity() {
         try { picker.launch(intent) } catch (_: ActivityNotFoundException) { toast(R.string.source_error) }
     }
     private fun renderList() {
-        if (page == "apps") {
+        if (page == "spirit") { spiritPanel.render(spirit.state.value); return }
+        if (page == "librarian") { librarianPanel.render(librarian.state.value, librarian.preferences.config()); return }
+        if (v4.settings.enabled && page in setOf("home", "library", "categories", "authors")) { renderPagedCatalog(); return }
+        if (page == "categories") {
+            val labels = resources.getStringArray(R.array.book_category_labels)
+            list.adapter = TextAdapter(listOf(
+                getString(R.string.book_categories) to null,
+                getString(R.string.by_author) to { authorQuery = ""; navigate("authors") }
+            ) + BookFilename.categories.mapIndexed { i, category ->
+                (labels[i] + "  ·  " + getString(R.string.book_count, catalog.categoryCount(category))) to { navigate("library", category = category) }
+            } + listOf(
+                getString(R.string.show_all) to { navigate("library") },
+                (getString(R.string.uncategorized) + "  ·  " + getString(R.string.book_count, catalog.categoryCount(""))) to { navigate("library", category = "") }
+            ))
+        } else if (page == "authors") {
+            val authors = catalog.authors.filter { it.first.contains(authorQuery, true) || (it.first.isEmpty() && getString(R.string.unknown_author).contains(authorQuery, true)) }
+            list.adapter = TextAdapter(listOf(getString(R.string.by_author) to null) + authors.map { (name, count) ->
+                (name.ifEmpty { getString(R.string.unknown_author) } + "  ·  " + getString(R.string.book_count, count)) to { navigate("library", author = name) }
+            } + if (authors.isEmpty()) listOf(getString(R.string.no_authors) to null) else emptyList())
+        } else if (page == "apps") {
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
             val apps = packageManager.queryIntentActivities(intent, 0).filter { it.activityInfo.exported && it.activityInfo.enabled && it.activityInfo.applicationInfo.enabled }.sortedBy { it.loadLabel(packageManager).toString() }
             list.adapter = TextAdapter(listOf(getString(R.string.visible_apps) to null) + apps.map { info ->
@@ -273,6 +418,14 @@ open class MainActivity : ComponentActivity() {
         } else if (page == "settings") {
             list.adapter = TextAdapter(listOf(
                 getString(R.string.room_settings) to null,
+                getString(R.string.apps) to { navigate("apps") },
+                getString(R.string.librarian_settings) to { showLibrarianSettings() },
+                "書靈與費用設定" to { SpiritDialogs.settings(this, v4, librarian.preferences.config().model) {
+                    librarian.clearSessionAndCache()
+                    // Factories choose V3 or V4 data flows at creation; do not retain the old choice.
+                    viewModelStore.clear(); recreate()
+                } },
+                "AI 用量紀錄" to { SpiritDialogs.usage(this, v4) },
                 getString(R.string.home_recovery) to { showHomeRecovery() },
                 getString(if (volumePaging) R.string.volume_paging_on else R.string.volume_paging_off) to {
                     volumePaging = !volumePaging; controlPreferences().edit().putBoolean("volume_paging", volumePaging).apply(); renderList()
@@ -294,8 +447,14 @@ open class MainActivity : ComponentActivity() {
                 rows += ShelfRow("collections", "collections", books = displayBooks)
                 rows += ShelfRow("shortcuts", "shortcuts")
             } else {
-                val filtered = displayBooks.filter { (!recentOnly || it.lastOpenedAt > 0) && (searchText.isBlank() || it.title.contains(searchText, true) || it.author.contains(searchText, true)) }
-                val title = when { searchText.isNotBlank() -> getString(R.string.search_results, searchText); recentOnly -> getString(R.string.recent); else -> getString(R.string.my_books) }
+                val filtered = catalog.select(selectedCategory, selectedAuthor, recentOnly, searchText)
+                val groupTitle = when {
+                    selectedCategory != null -> if (selectedCategory!!.isEmpty()) getString(R.string.uncategorized) else resources.getStringArray(R.array.book_category_labels)[BookFilename.categories.indexOf(selectedCategory).coerceAtLeast(0)]
+                    selectedAuthor != null -> selectedAuthor!!.ifEmpty { getString(R.string.unknown_author) }
+                    recentOnly -> getString(R.string.recent)
+                    else -> getString(R.string.my_books)
+                }
+                val title = if (searchText.isNotBlank()) groupTitle + " · " + getString(R.string.search_results, searchText) else groupTitle
                 rows += ShelfRow("shelf-heading", "heading", title + "  ·  " + getString(R.string.book_count, filtered.size))
                 if (filtered.isEmpty()) rows += ShelfRow("empty", "empty", getString(if (displayBooks.isEmpty()) R.string.empty else R.string.no_matches))
                 else rows.addAll(filtered.map { ShelfRow("shelf-${it.identity}", book = it) })
@@ -303,17 +462,147 @@ open class MainActivity : ComponentActivity() {
             bookAdapter.submitList(rows)
         }
     }
-    private fun open(book: Book, chooser: Boolean) {
+    private fun renderPagedCatalog() {
+        catalogJob?.cancel()
+        val requestedPage = page
+        catalogJob = lifecycleScope.launch {
+            val loading = launch {
+                delay(500)
+                if (page == requestedPage) list.adapter = TextAdapter(listOf("正在準備書目索引，首次使用可能需要稍候……" to null))
+            }
+            try {
+                val data = withContext(Dispatchers.IO) {
+                    pagedCatalog.sync()
+                    when (requestedPage) {
+                        "categories" -> pagedCatalog.categories()
+                        "authors" -> pagedCatalog.authors(authorQuery, catalogOffset)
+                        else -> pagedCatalog.page(if (requestedPage == "home") CatalogFilter() else CatalogFilter(searchText, selectedCategory, selectedAuthor, recentOnly), catalogOffset)
+                    }
+                }
+                loading.cancel()
+                if (page != requestedPage) return@launch
+                if (data is BookPage) {
+                    displayBooks = data.books; catalogTotal = data.count; catalogOffset = data.offset
+                    if (page == "home") catalogRecent = withContext(Dispatchers.IO) { pagedCatalog.page(CatalogFilter(recent = true)).count }
+                    val rows = mutableListOf<ShelfRow>()
+                    if (page == "home") {
+                        if (data.count == 0) rows += ShelfRow("empty", "empty", getString(R.string.empty))
+                        else rows += ShelfRow("featured", "featured", books = data.books.take(4))
+                        rows += ShelfRow("collections", "collections", books = data.books)
+                        rows += ShelfRow("shortcuts", "shortcuts")
+                    } else {
+                        rows += ShelfRow("heading", "heading", "${if (choosingSpirit) "選一本書召喚書靈" else selectedCategory ?: selectedAuthor ?: getString(R.string.my_books)} · ${data.count} 本 · ${data.offset / 50 + 1} 頁")
+                        rows += data.books.map { ShelfRow(it.identity, book = it) }
+                        if (data.books.isEmpty()) rows += ShelfRow("empty", "empty", getString(R.string.no_matches))
+                        rows += ShelfRow("pager", "pager")
+                    }
+                    list.adapter = bookAdapter; bookAdapter.submitList(rows)
+                } else {
+                    @Suppress("UNCHECKED_CAST") val groups = data as List<CatalogGroup>
+                    val rows = mutableListOf<Pair<String, (() -> Unit)?>>()
+                    if (page == "categories") {
+                        rows += getString(R.string.book_categories) to null
+                        rows += getString(R.string.by_author) to { navigate("authors") }
+                        (BookFilename.categories + "").forEach { name -> rows += "${name.ifEmpty { getString(R.string.uncategorized) }} · ${groups.firstOrNull { it.name == name }?.count ?: 0} 本" to { navigate("library", category = name) } }
+                    } else {
+                        rows += "按作者分類 · ${catalogOffset / 50 + 1} 頁" to null
+                        groups.forEach { group -> rows += "${group.name.ifEmpty { getString(R.string.unknown_author) }} · ${group.count} 本" to { navigate("library", author = group.name) } }
+                        if (catalogOffset > 0) rows += "上一頁" to { catalogOffset = maxOf(0, catalogOffset - 50); renderList() }
+                        if (groups.size == 50) rows += "下一頁" to { catalogOffset += 50; renderList() }
+                    }
+                    list.adapter = TextAdapter(rows)
+                }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { list.adapter = TextAdapter(listOf("暫時無法讀取分頁索引；原書仍保留。" to null, "重試" to { renderList() })) }
+            finally { loading.cancel() }
+        }
+    }
+    private fun librarianAction(action: DialogueAction, value: String) {
+        when (val effect = librarian.dispatch(action, value)) {
+            DialogueEffect.Library -> navigate("library")
+            DialogueEffect.TextEntry -> LibrarianDialogs.textEntry(this) { librarianAction(DialogueAction.QUERY, it) }
+            is DialogueEffect.Open -> lifecycleScope.launch {
+                val book = model.repository.dao.book(effect.id)
+                if (book == null) { toast(R.string.source_error); return@launch }
+                open(book, effect.chooser) { page == "librarian" && librarian.state.value.stage == DialogueStage.CONFIRM && librarian.state.value.card?.book?.identity == effect.id }
+            }
+            else -> Unit
+        }
+    }
+    private fun showLibrarianSettings() = LibrarianDialogs.settings(this, librarian,
+        changed = { if (page == "librarian") librarianPanel.render(librarian.state.value, librarian.preferences.config()) },
+        export = { try { diagnosticPicker.launch("kobostyle-ai-diagnostics.json") } catch (_: ActivityNotFoundException) { toast(R.string.source_error) } })
+    private fun open(book: Book, chooser: Boolean, stillRequested: () -> Boolean = { true }) {
         lifecycleScope.launch {
             val accessible = withContext(Dispatchers.IO) {
                 try { contentResolver.openFileDescriptor(Uri.parse(book.uri), "r")?.use { true } ?: false } catch (_: Exception) { false }
             }
+            if (!stillRequested()) return@launch
             if (!accessible) { model.repository.dao.bookStatus(book.identity, "unavailable"); toast(R.string.source_error); return@launch }
             bridge.open(Uri.parse(book.uri), book.mime, chooser) { model.opened(book) }?.let { toast(it) }
         }
     }
     private fun bookMenu(book: Book) {
-        AlertDialog.Builder(this).setTitle(book.title).setItems(arrayOf(getString(R.string.open_book), getString(R.string.choose_reader))) { _, which -> open(book, which == 1) }.show()
+        val choices = listOf(getString(R.string.open_book), getString(R.string.choose_reader)) + if (v4.settings.enabled) listOf("召喚書靈／問這本書") else emptyList()
+        AlertDialog.Builder(this).setTitle(book.title).setItems(choices.toTypedArray()) { _, which -> if (which == 2) showSpirit(book.identity) else open(book, which == 1) }.show()
+    }
+    private fun showSpirit(id: String) { selectedSpiritId = id; navigate("spirit"); spirit.select(id) }
+    private fun spiritAction(action: String) {
+        val book = spirit.state.value.book
+        fun ask(question: String, refine: Boolean = false) { spirit.ask(question, refine) { SpiritDialogs.confirm(this, it) } }
+        when (action) {
+            "back" -> navigate("librarian")
+            "library" -> navigate("library")
+            "summon" -> spirit.summon()
+            "cancel" -> spirit.cancel()
+            "open" -> if (book != null) open(book, false) { page == "spirit" && spirit.state.value.book?.identity == book.identity }
+            "import" -> if (book != null && importJob?.isActive != true) { pendingPackBook = book.identity; try { packPicker.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) } catch (_: ActivityNotFoundException) { pendingPackBook = null; toast(R.string.source_error) } }
+            "summary" -> ask("請整理已允許章節的重點。")
+            "explain" -> ask("請只依已允許的片段解釋，不透露其他章節。")
+            "quiz" -> ask("請根據已允許的片段提出一個思考問題。")
+            "question" -> LibrarianDialogs.textEntry(this) { ask(it) }
+            "refine" -> ask("請依書名和書目精修書靈的歡迎語，坦承未讀全書。", true)
+            "delete", "remove_pack" -> AlertDialog.Builder(this).setTitle("確認移除本機書靈資料")
+                .setMessage("只移除這本書的${if (action == "delete") "書靈與知識包" else "知識包"}，不刪除原始電子書。")
+                .setNegativeButton("取消", null).setPositiveButton("移除") { _, _ -> if (action == "delete") spirit.delete() else spirit.removePack() }.show()
+            "boundary" -> {
+                val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), 0, dp(20), 0) }
+                body.addView(label("手動已讀到第幾章？留空代表未知。這不是 NeoReader 自動進度。", 17f))
+                val input = EditText(this).apply { inputType = android.text.InputType.TYPE_CLASS_NUMBER; setText(spirit.state.value.boundary?.chapter?.toString().orEmpty()) }; body.addView(input)
+                val spoilers = CheckBox(this).apply { text = "允許使用所有章節（可能劇透）"; isChecked = spirit.state.value.boundary?.spoilers == true }; body.addView(spoilers)
+                val dialog = AlertDialog.Builder(this).setTitle("閱讀邊界").setView(body).setNegativeButton("取消", null).setPositiveButton("儲存", null).create()
+                dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val number = input.text.toString().toIntOrNull()
+                    if (input.text.isNotBlank() && (number == null || number !in 0..100_000)) input.error = "請輸入 0–100000 或留空"
+                    else { spirit.boundary(number, spoilers.isChecked); dialog.dismiss() }
+                } }; dialog.show()
+            }
+        }
+    }
+    private fun importKnowledge(id: String, uri: Uri) {
+        if (uri.scheme != "content" || importJob?.isActive == true) return
+        importJob = lifecycleScope.launch {
+            try {
+                val book = model.repository.dao.book(id) ?: return@launch
+                val importer = KnowledgeImporter(v4.database)
+                val preview = withContext(Dispatchers.IO) { contentResolver.openInputStream(uri)?.use { importer.inspect(it) } ?: error("No stream") }
+                if (page != "spirit" || selectedSpiritId != id) return@launch
+                val confirmed = suspendCancellableCoroutine<Boolean> { continuation ->
+                    fun done(value: Boolean) { if (continuation.isActive) continuation.resumeWith(Result.success(value)) }
+                    val dialog = AlertDialog.Builder(this@MainActivity).setTitle("確認知識包對應書籍")
+                        .setMessage("選定原書：${book.title}\n\n包內書名：${preview.title}\n作者：${preview.author}\n片段：${preview.count}\n來源：${preview.source}\n\n請確認兩者是同一本書。匯入不收費、不上傳；之後只有你確認 AI 問答時，才傳送已允許的少量片段。校驗碼只檢查完整性，不保證內容正確。")
+                        .setNegativeButton("取消") { _, _ -> done(false) }.setPositiveButton("是這本書，匯入") { _, _ -> done(true) }.setOnCancelListener { done(false) }.create()
+                    dialog.setOnDismissListener { done(false) }; continuation.invokeOnCancellation { runOnUiThread { dialog.dismiss() } }; dialog.show()
+                }
+                if (!confirmed || page != "spirit" || selectedSpiritId != id) return@launch
+                withContext(Dispatchers.IO) {
+                    check(bookVersion(model.repository.dao.book(id) ?: error("Missing book")) == bookVersion(book))
+                    contentResolver.openInputStream(uri)?.use { importer.import(book, preview, it) } ?: error("No stream")
+                }
+                spirit.imported(); Toast.makeText(this@MainActivity, "知識包已匯入；請設定手動已讀章節。", Toast.LENGTH_LONG).show()
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { Toast.makeText(this@MainActivity, "無法匯入：請檢查版本、格式、大小、校驗碼與對應書籍。既有知識包保持完整。", Toast.LENGTH_LONG).show() }
+        }
     }
     private fun showHomeRecovery() {
         homeRole.rememberOriginal()
@@ -374,11 +663,11 @@ open class MainActivity : ComponentActivity() {
     private fun bookTile(book: Book, height: Int, holder: BookHolder, menu: Boolean): LinearLayout {
         val tile = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(6), 0, dp(6), dp(12)) }
         val cover = bookCover(book, height, holder).apply {
-            isFocusable = true; setOnClickListener { open(book, false) }; setOnLongClickListener { bookMenu(book); true }
+            isFocusable = true; setOnClickListener { if (choosingSpirit) showSpirit(book.identity) else open(book, false) }; setOnLongClickListener { bookMenu(book); true }
             layoutParams = LinearLayout.LayoutParams(minOf((height * .70f).toInt(), availableWidth() / (if (menu) grid.spanCount else if (resources.configuration.screenWidthDp < 480) 2 else 4) - dp(12)), height)
         }
         tile.addView(cover)
-        val title = label(book.title, 16f, true).apply { maxLines = 2; minLines = 2; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(8), 0, dp(2)); setOnClickListener { open(book, false) } }
+        val title = label(book.title, 16f, true).apply { maxLines = 2; minLines = 2; ellipsize = TextUtils.TruncateAt.END; setPadding(0, dp(8), 0, dp(2)); setOnClickListener { if (choosingSpirit) showSpirit(book.identity) else open(book, false) } }
         if (menu) {
             val titleRow = LinearLayout(this).apply { gravity = Gravity.TOP }
             titleRow.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
@@ -386,7 +675,7 @@ open class MainActivity : ComponentActivity() {
                 textSize = 22f; setPadding(0, 0, 0, 0); contentDescription = book.title + " · " + getString(R.string.book_options)
             }, LinearLayout.LayoutParams(dp(48), dp(48)))
             tile.addView(titleRow)
-            tile.addView(label(book.author.ifBlank { getString(R.string.unknown_author) }, 14f).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
+            tile.addView(label(catalog.author(book).ifBlank { getString(R.string.unknown_author) }, 14f).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END })
         } else tile.addView(title)
         val note = when { book.scanStatus == "unavailable" -> getString(R.string.unavailable); book.scanStatus != "ok" -> getString(R.string.metadata_error); book.lastOpenedAt > 0 -> getString(R.string.opened_on, java.text.SimpleDateFormat("MM/dd", java.util.Locale.getDefault()).format(Date(book.lastOpenedAt))); else -> getString(R.string.never_opened) }
         tile.addView(label(note, 14f).apply { maxLines = 2; minLines = if (menu) 2 else 1; ellipsize = TextUtils.TruncateAt.END; contentDescription = note })
@@ -413,8 +702,9 @@ open class MainActivity : ComponentActivity() {
         override fun onBindViewHolder(holder: TextHolder, position: Int) {
             holder.container.removeAllViews()
             val (text, action) = rows[position]
-            holder.container.addView(if (action == null) label(text, if (position == 0) 24f else 16f, position == 0).apply { setPadding(0, dp(12), 0, dp(12)) } else button(text, outlined = false, action = action).apply { gravity = Gravity.START; setPadding(0, dp(12), 0, dp(12)) })
-            if (action != null) holder.container.addView(rule())
+            holder.container.setPadding(0, 0, if (page == "categories") dp(8) else 0, if (page == "categories") dp(8) else 0)
+            holder.container.addView(if (action == null) label(text, if (position == 0) 24f else 16f, position == 0).apply { setPadding(0, dp(12), 0, dp(12)) } else button(text, outlined = page == "categories", action = action).apply { gravity = Gravity.START; setPadding(dp(8), dp(16), dp(8), dp(16)) })
+            if (action != null && page != "categories") holder.container.addView(rule())
         }
     }
     private class TextHolder(val container: LinearLayout) : RecyclerView.ViewHolder(container)
@@ -444,9 +734,13 @@ open class MainActivity : ComponentActivity() {
                 "collections" -> {
                     val tiles = LinearLayout(this@MainActivity).apply { setPadding(0, dp(12), 0, dp(8)) }
                     val recent = row.books.filter { it.lastOpenedAt > 0 }
-                    tiles.addView(collection(getString(R.string.my_books), row.books, row.books.size, holder) { navigate("library") }, LinearLayout.LayoutParams(0, -2, 1f))
-                    tiles.addView(collection(getString(R.string.recent), recent, recent.size, holder) { navigate("library", recent = true) }, LinearLayout.LayoutParams(0, -2, 1f))
+                    tiles.addView(collection(getString(R.string.book_categories), row.books, if (v4.settings.enabled) catalogTotal else row.books.size, holder) { navigate("categories") }, LinearLayout.LayoutParams(0, -2, 1f))
+                    tiles.addView(collection(getString(R.string.recent), recent, if (v4.settings.enabled) catalogRecent else recent.size, holder) { navigate("library", recent = true) }, LinearLayout.LayoutParams(0, -2, 1f))
                     holder.container.addView(tiles)
+                }
+                "pager" -> {
+                    holder.container.addView(button("上一頁") { catalogOffset = maxOf(0, catalogOffset - 50); renderList(); list.scrollToPosition(0) }.apply { isEnabled = catalogOffset > 0 })
+                    holder.container.addView(button("下一頁") { catalogOffset += 50; renderList(); list.scrollToPosition(0) }.apply { isEnabled = catalogOffset + 50 < catalogTotal })
                 }
                 "shortcuts" -> {
                     val pair = LinearLayout(this@MainActivity)

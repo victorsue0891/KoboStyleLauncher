@@ -63,6 +63,9 @@ class LibraryRepository(
         }
     }
     suspend fun scan(progress: (ScanProgress) -> Unit) = withContext(Dispatchers.IO) {
+        if (context.getSharedPreferences("spirits_v4", 0).getBoolean("feature.meow_spirits_v4", false)) {
+            checkpointScan(progress); return@withContext
+        }
         var count = 0; var failures = 0; var visitedCount = 0; var limited = false
         refreshAccess()
         for (source in dao.sources()) {
@@ -123,6 +126,76 @@ class LibraryRepository(
         }
         progress(ScanProgress(count, failures, false, limited))
     }
+    /** A paused source is resumed only by a later explicit scan action, never at startup. */
+    private suspend fun checkpointScan(progress: (ScanProgress) -> Unit) {
+        refreshAccess()
+        var total = 0; var failures = 0
+        for (source in dao.sources()) {
+            coroutineContext.ensureActive()
+            val root = Uri.parse(source.uri)
+            if (!resolver.persistedUriPermissions.any { it.uri == root && it.isReadPermission }) { failures++; continue }
+            var job = dao.scanJob(source.uri)
+            try {
+                if (job == null) {
+                    val rootUri = if (source.tree) DocumentsContract.buildDocumentUriUsingTree(root, DocumentsContract.getTreeDocumentId(root)) else root
+                    val doc = query(rootUri, if (source.tree) root else null, 1).single()
+                    job = ScanJob(source.uri, java.util.UUID.randomUUID().toString())
+                    dao.startScan(job, ScanNode(source.uri, doc.id, doc.uri.toString(), doc.name, doc.mime, doc.size, doc.modified, 0))
+                }
+                dao.saveSource(source.copy(status = "partial"))
+                while (true) {
+                    coroutineContext.ensureActive()
+                    val node = dao.nextNode(source.uri) ?: break
+                    if (node.depth > 32) throw ScanLimitException()
+                    if (node.mime == DocumentsContract.Document.MIME_TYPE_DIR) {
+                        check(source.tree)
+                        val signal = CancellationSignal()
+                        coroutineScope {
+                            val watcher = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) { try { awaitCancellation() } finally { signal.cancel() } }
+                            try {
+                                val children = DocumentsContract.buildChildDocumentsUriUsingTree(root, node.id)
+                                val cursor = resolver.query(children, columns, null, null, null, signal) ?: error("Provider unavailable")
+                                cursor.use {
+                                    var observed = 0
+                                    while (it.moveToNext()) {
+                                        ensureActive()
+                                        if (++observed > maxDocuments) throw ScanLimitException()
+                                        val id = it.getString(0) ?: error("No document ID")
+                                        dao.enqueue(ScanNode(source.uri, id, DocumentsContract.buildDocumentUriUsingTree(root, id).toString(),
+                                            it.getString(1).orEmpty().take(500), it.getString(2).orEmpty(), it.getLong(3), it.getLong(4), node.depth + 1))
+                                        if (dao.nodeCount(source.uri) > maxDocuments) throw ScanLimitException()
+                                    }
+                                }
+                            } finally { watcher.cancelAndJoin() }
+                        }
+                        dao.done(source.uri, node.id)
+                    } else {
+                        val mime = supportedMime(node.mime, node.name)
+                        var book: Book? = null
+                        if (mime != null) {
+                            val doc = Document(Uri.parse(node.uri), node.id, node.name, node.mime, node.size, node.modified)
+                            book = metadata(doc, source, identity(doc.uri.authority.orEmpty(), doc.id), mime).copy(scanToken = job!!.token)
+                        }
+                        job = job!!.copy(books = job!!.books + if (book != null) 1 else 0, failures = job!!.failures + if (book != null && book.scanStatus != "ok") 1 else 0)
+                        dao.finishNode(node, job!!, book)
+                        progress(ScanProgress(total + job!!.books, failures + job!!.failures, true))
+                    }
+                }
+                dao.completeScan(source.uri, job!!.token)
+                dao.saveSource(source.copy(status = "ok"))
+                total += job!!.books; failures += job!!.failures
+            } catch (e: CancellationException) { throw e }
+            catch (_: ScanLimitException) {
+                dao.saveSource(source.copy(status = "partial"))
+                progress(ScanProgress(total + (job?.books ?: 0), failures + (job?.failures ?: 0), false, true)); return
+            } catch (_: SecurityException) {
+                failures++; dao.saveSource(source.copy(status = "reauthorize")); dao.sourceStatus(source.uri, "unavailable")
+            } catch (_: Exception) {
+                failures++; dao.saveSource(source.copy(status = "scan_error"))
+            }
+        }
+        progress(ScanProgress(total, failures, false))
+    }
     private suspend fun metadata(doc: Document, source: Source, id: String, mime: String): Book {
         val cached = dao.book(id)
         if (cached != null && doc.modified > 0 && doc.size > 0 &&
@@ -136,7 +209,7 @@ class LibraryRepository(
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { false }
             if (cached.scanStatus == "ok" || recovered) {
-                return cached.copy(uri = doc.uri.toString(), sourceUri = source.uri, documentId = doc.id, scanStatus = "ok")
+                return cached.copy(uri = doc.uri.toString(), sourceUri = source.uri, documentId = doc.id, displayName = doc.name, scanStatus = "ok")
             }
         }
         var title = doc.name.substringBeforeLast('.', doc.name).ifBlank { "EPUB / PDF" }
@@ -175,7 +248,7 @@ class LibraryRepository(
         catch (_: SecurityException) { status = "unavailable" }
         catch (_: java.io.FileNotFoundException) { status = "unavailable" }
         catch (_: Exception) { status = "metadata_error" }
-        return Book(id, doc.uri.toString(), source.uri, doc.id, title, author, mime, doc.modified, doc.size, coverPath = cover, scanStatus = status)
+        return Book(id, doc.uri.toString(), source.uri, doc.id, title, author, mime, doc.modified, doc.size, coverPath = cover, scanStatus = status, displayName = doc.name)
     }
     companion object {
         fun identity(authority: String, documentId: String) = Uri.encode(authority) + ":" + Uri.encode(documentId)

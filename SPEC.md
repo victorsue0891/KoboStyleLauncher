@@ -1,5 +1,9 @@
 # KoboStyle Launcher — Product & Engineering Specification
 
+2026-11-25 V4 extension: P1–P6 development and scoped Leaf2 acceptance are complete. Book Spirits adds opt-in paged metadata, local Lite personas, bounded single-book Q&A and SAF knowledge packs, with a shared AI gateway and local cost reservations. The library schema migrates 2→3; a separate bundled-SQLite Room v1 store supplies FTS5. The updated APK is installed; the actual 13,618 books and sources survive migration, and eight distinct device tests have passed. SAF import, two explicitly approved live AI requests, feature rollback and process restart passed; the user confirmed physical E Ink display and page-key scrolling. Original reader/HOME/key behavior remains. See [implementation and limits](docs/v4/IMPLEMENTATION_2026-11-25.md) and [P6 evidence and scope limits](docs/v4/DEVICE_ACCEPTANCE_2026-11-25.md).
+
+2026-11-20 extension: the user requested the Cat Librarian tab and explicitly included OpenAI integration. Apps now lives under More. AI is opt-in, uses a device-entered encrypted key and candidate metadata only, and preserves the existing Room v2/SAF/reader/HOME behavior. The current implementation, privacy boundary, host results and pending device gates are documented in [Cat Librarian development](docs/LIBRARIAN_2026-11-20.md). The baseline phases and device results below are historical; no device was connected for this extension.
+
 Version: 1.0 (2026-11-14)\
 Target: BOOX Leaf2, Android 11, 7-inch E Ink, 2 GB RAM\
 Language: Traditional Chinese UI (default); English fallback\
