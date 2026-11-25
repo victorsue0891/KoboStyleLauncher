@@ -28,7 +28,7 @@ class LibraryMigrationTest {
             old.version = 1
         }
         val db = Room.databaseBuilder(context, LibraryDatabase::class.java, name)
-            .addMigrations(LibraryDatabase.MIGRATION_1_2).allowMainThreadQueries().build()
+            .addMigrations(LibraryDatabase.MIGRATION_1_2, LibraryDatabase.MIGRATION_2_3).allowMainThreadQueries().build()
         try {
             val book = db.library().book("id")!!
             assertEquals("", book.displayName)

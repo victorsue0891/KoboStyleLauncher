@@ -19,6 +19,7 @@ class LibrarianViewModel(
     private val vault: KeyVault,
     private val service: CuratorService,
     private val includeAcceptanceBooks: Boolean = false,
+    private val pagedCandidates: (suspend (Choice) -> Pair<Int, List<Book>>)? = null,
     private val readable: suspend (Book) -> Boolean
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(DialogueState())
@@ -43,8 +44,9 @@ class LibrarianViewModel(
         val choice = state.value.choice
         work = viewModelScope.launch {
             try {
-                val books = repository.dao.observeBooks().first()
-                val ranked = withContext(Dispatchers.Default) { LocalCurator.rank(books, choice, includeAcceptanceBooks) }
+                val page = pagedCandidates?.invoke(choice)
+                val books = page?.second ?: repository.dao.observeBooks().first()
+                val ranked = withContext(Dispatchers.Default) { LocalCurator.rank(books, if (page == null) choice else choice.copy(round = 0), includeAcceptanceBooks) }
                 val candidates = withContext(Dispatchers.IO) {
                     val available = mutableListOf<Book>()
                     for (book in ranked.take(60)) {
@@ -56,7 +58,7 @@ class LibrarianViewModel(
                     available
                 }
                 val result = withContext(Dispatchers.IO) { service.curate(candidates, choice, online) }
-                    .copy(indexedBooks = ranked.size, checkedCandidates = candidates.size)
+                    .copy(indexedBooks = page?.first ?: ranked.size, checkedCandidates = candidates.size)
                 if (generation == requestGeneration) mutableState.value = state.value.copy(stage = DialogueStage.CARDS, result = result, index = 0)
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) {
@@ -86,14 +88,21 @@ class LibrarianViewModel(
     }
     override fun onCleared() { cancelWork(); service.clearCache() }
     companion object {
-        fun create(application: Application, repository: LibraryRepository): LibrarianViewModel {
+        fun create(application: Application, repository: LibraryRepository,
+            confirm: suspend (org.kobostyle.launcher.spirits.CostPreview) -> Boolean = { false }): LibrarianViewModel {
             val prefs = AiPreferences(application.getSharedPreferences("librarian_ai", 0))
             val vault = AndroidKeyVault(application)
-            val service = CuratorService(prefs, vault, OpenAiTransport(), {
+            val runtime = org.kobostyle.launcher.spirits.SpiritRuntime.get(application)
+            val service = CuratorService(prefs, vault, CuratorTransport { key, body ->
+                runtime.gateway.send("recommend", body, { key }, confirm)
+            }, {
                 val network = application.getSystemService(ConnectivityManager::class.java)
                 network.getNetworkCapabilities(network.activeNetwork)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-            })
-            return LibrarianViewModel(repository, prefs, vault, service) { book ->
+            }, retryTransient = false)
+            val catalog = org.kobostyle.launcher.spirits.PagedCatalog(repository.dao, runtime.database.dao())
+            return LibrarianViewModel(repository, prefs, vault, service, pagedCandidates = if (!runtime.settings.enabled) null else { choice ->
+                catalog.sync(); catalog.candidates(choice.query, choice.preferUnopened, choice.round, choice.mood)
+            }) { book ->
                 application.contentResolver.openFileDescriptor(Uri.parse(book.uri), "r")?.use { true } == true
             }
         }

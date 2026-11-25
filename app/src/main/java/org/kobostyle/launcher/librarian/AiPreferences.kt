@@ -33,7 +33,7 @@ class AiPreferences(private val prefs: SharedPreferences, private val date: () -
             .putString("last_error_code", if (status in 200..299) "none" else ApiErrorCode.safe(errorCode)).apply()
     }
     @Synchronized fun outcome(kind: String, durationMillis: Long) {
-        val safeKind = kind.takeIf { it in setOf("ok", "cache", "empty", "disabled", "no_key", "offline", "key_storage", "limit", "timeout", "authentication", "rate_limit", "server", "http", "invalid_response", "network") } ?: "invalid_response"
+        val safeKind = kind.takeIf { it in setOf("ok", "cache", "empty", "disabled", "no_key", "offline", "key_storage", "limit", "timeout", "authentication", "rate_limit", "server", "http", "invalid_response", "network", "stopped", "unknown_price", "budget", "busy", "duplicate", "clock_changed", "cancelled", "settings_changed", "input_limit") } ?: "invalid_response"
         prefs.edit().putString("last_outcome", safeKind).putLong("last_duration_ms", durationMillis.coerceAtLeast(0)).apply()
     }
     fun diagnostics() = org.json.JSONObject().put("ai_enabled", config().enabled).put("daily_limit", config().dailyLimit)

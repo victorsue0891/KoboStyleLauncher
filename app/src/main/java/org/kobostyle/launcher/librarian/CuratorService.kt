@@ -74,7 +74,8 @@ class CuratorService(
     private val connected: () -> Boolean,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
     private val timeoutMillis: Long = 45_000,
-    private val waitRetry: suspend (Long) -> Unit = { delay(it) }
+    private val waitRetry: suspend (Long) -> Unit = { delay(it) },
+    private val retryTransient: Boolean = true
 ) {
     private data class Entry(val time: Long, val result: CuratorResult)
     private val cache = linkedMapOf<String, Entry>()
@@ -117,7 +118,7 @@ class CuratorService(
                     preferences.httpResponse(code, response!!.errorCode)
                     if (code in 200..299) return@repeat
                     val kind = when (code) { 401, 403 -> "authentication"; 429 -> "rate_limit"; in 500..599 -> "server"; else -> "http" }
-                    if (attempt == 0 && (code == 429 || code in 500..599)) waitRetry(response!!.retryAfterSeconds.coerceIn(1, 3) * 1000L)
+                    if (retryTransient && attempt == 0 && (code == 429 || code in 500..599)) waitRetry(response!!.retryAfterSeconds.coerceIn(1, 3) * 1000L)
                     else throw CuratorFailure(kind)
                 }
                 ResponsesContract.parse(checkNotNull(response).body, candidates, choice)
@@ -130,6 +131,7 @@ class CuratorService(
         } catch (_: TimeoutCancellationException) { currentCoroutineContext().ensureActive(); fallback("timeout") }
         catch (e: CancellationException) { throw e }
         catch (e: CuratorFailure) { fallback(e.kind) }
+        catch (e: org.kobostyle.launcher.spirits.GateFailure) { fallback(e.reason) }
         catch (_: java.net.SocketTimeoutException) { fallback("timeout") }
         catch (_: Exception) { fallback("network") }
     }

@@ -11,7 +11,8 @@ import org.kobostyle.launcher.R
 import org.kobostyle.launcher.data.books.BookFilename
 
 /** One stable page, one static cat, at most four conversational choices. No timed redraws. */
-class LibrarianPanel(context: Context, private val action: (DialogueAction, String) -> Unit, private val settings: () -> Unit) : ScrollView(context) {
+class LibrarianPanel(context: Context, private val action: (DialogueAction, String) -> Unit, private val settings: () -> Unit,
+    private val spirits: (() -> Unit)? = null) : ScrollView(context) {
     private val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private var lastState: DialogueState? = null
     private var lastConfig: AiConfig? = null
@@ -108,6 +109,7 @@ class LibrarianPanel(context: Context, private val action: (DialogueAction, Stri
             DialogueStage.CONFIRM -> { option("開始閱讀", DialogueAction.OPEN, state.card?.book?.identity.orEmpty()); option("使用其他閱讀器", DialogueAction.OTHER_READER, state.card?.book?.identity.orEmpty()); option("再看看推薦", DialogueAction.BACK) }
         }
         body.addView(choices)
+        if (spirits != null && state.stage in setOf(DialogueStage.WELCOME, DialogueStage.DETAIL)) body.addView(button(if (state.stage == DialogueStage.DETAIL) "召喚這本書的書靈" else "書靈小屋 · 選一本書") { spirits.invoke() })
     }
     companion object {
         fun expressionResource(expression: CatExpression) = when (expression) {
@@ -127,6 +129,7 @@ class LibrarianPanel(context: Context, private val action: (DialogueAction, Stri
             CatExpression.READING -> "墨喵正在閱讀"
         }
         fun notice(kind: String): String = when (kind) {
+            "stopped", "unknown_price", "budget", "busy", "duplicate", "clock_changed", "cancelled", "settings_changed", "input_limit" -> org.kobostyle.launcher.spirits.SpiritDialogs.failure(kind)
             "", "disabled", "empty" -> ""
             "no_key" -> "尚未設定 API Key，先用離線方式挑選。"
             "key_storage" -> "無法解密金鑰，請到 AI 設定重新輸入；先顯示離線選書。"
