@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-26",
+  "tool": "built-in image_gen",
+  "source": "cat-v2-source.png (original cat_sprite_sheet-02.png supplied by user)",
+  "note": "AI-assisted simplification/extraction; not pixel-identical crops. Android assets are proportionally resized on white to 320x320; welcome card to 480x640.",
+  "assets": [
+    {
+      "name": "welcome",
+      "prompt": "Extract the waving welcome cat from the user's sheet, remove decoration/text, retain identity, white background and full silhouette."
+    },
+    {
+      "name": "thinking",
+      "prompt": "Edit target: supplied cat sheet. Produce ONE square 1024x1024 small E Ink UI illustration. Extract and simplify ONLY the cat in the top-middle THINKING panel: eyes looking up, one paw touching chin, small question mark above head. Preserve the reference character identity: round glasses, black cap with white open-book emblem, bowtie, black vest and rectangular badge. Keep the exact indicated expression/pose and relevant held books. Remove ALL panel borders, words, headings, flowers, rays, waves, ornaments and left title strip. Pure white background. Bold clean black-and-white line art, no color, no gray shading. Center complete silhouette with consistent 8 percent white margins; show entire ears, paws, books and tail without cropping. One character only, no grid, no labels. Match source proportions and line weight."
+    },
+    {
+      "name": "recommend",
+      "prompt": "Edit target: supplied cat sheet. Produce ONE square 1024x1024 small E Ink UI illustration. Extract and simplify ONLY the cat in the top-right RECOMMEND panel: happy closed smiling eyes, holding up a black book with white open-book emblem, short book stack beside the cat. Preserve the reference character identity: round glasses, black cap with white open-book emblem, bowtie, black vest and rectangular badge. Keep the exact indicated expression/pose and relevant held books. Remove ALL panel borders, words, headings, flowers, rays, waves, ornaments and left title strip. Pure white background. Bold clean black-and-white line art, no color, no gray shading. Center complete silhouette with consistent 8 percent white margins; show entire ears, paws, books and tail without cropping. One character only, no grid, no labels. Match source proportions and line weight."
+    },
+    {
+      "name": "curious",
+      "prompt": "Edit target: supplied cat sheet. Produce ONE square 1024x1024 small E Ink UI illustration. Extract and simplify ONLY the cat in the bottom-left CURIOUS panel: tilted head, round wide eyes and small surprised mouth, both paws resting on a stack of three books. Preserve the reference character identity: round glasses, black cap with white open-book emblem, bowtie, black vest and rectangular badge. Keep the exact indicated expression/pose and relevant held books. Remove ALL panel borders, words, headings, flowers, rays, waves, ornaments and left title strip. Pure white background. Bold clean black-and-white line art, no color, no gray shading. Center complete silhouette with consistent 8 percent white margins; show entire ears, paws, books and tail without cropping. One character only, no grid, no labels. Match source proportions and line weight."
+    },
+    {
+      "name": "happy",
+      "prompt": "Edit target: supplied cat sheet. Produce ONE square 1024x1024 small E Ink UI illustration. Extract and simplify ONLY the cat in the bottom-middle HAPPY panel: closed smiling eyes, open happy mouth, both paws raised joyfully. Preserve the reference character identity: round glasses, black cap with white open-book emblem, bowtie, black vest and rectangular badge. Keep the exact indicated expression/pose and relevant held books. Remove ALL panel borders, words, headings, flowers, rays, waves, ornaments and left title strip. Pure white background. Bold clean black-and-white line art, no color, no gray shading. Center complete silhouette with consistent 8 percent white margins; show entire ears, paws, books and tail without cropping. One character only, no grid, no labels. Match source proportions and line weight."
+    },
+    {
+      "name": "reading",
+      "prompt": "Edit target: supplied cat sheet. Produce ONE square 1024x1024 small E Ink UI illustration. Extract and simplify ONLY the cat in the bottom-right READING panel: seated, eyes looking down at an open book held in both paws, tail curled alongside, small paw-print teacup to the side. Preserve the reference character identity: round glasses, black cap with white open-book emblem, bowtie, black vest and rectangular badge. Keep the exact indicated expression/pose and relevant held books. Remove ALL panel borders, words, headings, flowers, rays, waves, ornaments and left title strip. Pure white background. Bold clean black-and-white line art, no color, no gray shading. Center complete silhouette with consistent 8 percent white margins; show entire ears, paws, books and tail without cropping. One character only, no grid, no labels. Match source proportions and line weight."
+    },
+    {
+      "name": "welcome-card",
+      "prompt": "Edit target: attached sheet. Extract ONLY the complete top-left WELCOME card among the six character panels, immediately right of the vertical BOOX title strip. Return a single portrait card on white, same original design faithfully: rounded thick black frame, top flower corners, Chinese text exactly 歡迎！ and English Welcome!, waving cat with round glasses, black book-emblem cap, bowtie, waistcoat, badge, holding book, radiating marks and lower wave ornaments. Preserve entire frame and original card proportions roughly 3:4, minimal white outer margin. No other panels, no title strip, no extra text. Do not redesign the character or layout; this is extraction of the user's existing welcome card for an E Ink launcher welcome screen."
+    }
+  ]
+}

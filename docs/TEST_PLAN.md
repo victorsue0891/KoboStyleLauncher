@@ -1,5 +1,11 @@
 # 測試計畫與驗收紀錄
 
+## 2026-11-26 喵館員造型更新
+
+依使用者提供的新角色圖更換六種表情，新增直向首頁歡迎卡片。`assembleDebug assembleDebugAndroidTest testDebugUnitTest --tests 'org.kobostyle.launcher.librarian.LibrarianUiTest' --tests 'org.kobostyle.launcher.spirits.SpiritUiTest' lintDebug --console plain` 成功；相關 11 項 UI 測試通過，Lint 0 errors／61 warnings，正式 APK 簽章驗證通過。已檢視主機渲染的首頁、推薦、書靈與橫向大字畫面。
+
+同日後續使用者接上 Leaf2，前後唯讀診斷均 0 失敗。新版與測試 APK 覆蓋安裝成功；離線館員及隔離書靈共兩項 instrumentation 通過（21.712 秒），包含字級 1.3、直橫向、捲動及重建。升級前後 13,618 本／4 個來源、書靈／知識包／邊界／3 筆既有 AI 用量與 HOME／偏好摘要一致，沒有新增真實 App AI 呼叫。已檢視實機歡迎、推薦、Lite 及橫向截圖，人工電子紙觀察待回覆。素材、精確命令及截圖見 [造型更新紀錄](design/CAT_REFRESH_2026-11-26.md)。
+
 ## 2026-11-25 韌體相容性
 
 Leaf2 BOOX 4.0.2／Android 11／build 10545：`FirmwareCompatibilityTest` 兩項、`LibrarianKeyStoreTest` 一項與 `SpiritDeviceAcceptanceTest` 四項，`OK (7 tests)`／37.896 秒。`assembleDebugAndroidTest lintDebug` exit 0，Lint 0 errors／61 warnings；正式程式未修改，未重跑已通過的 106 項主機測試。測試前後資料一致、零新增付費 API。其他韌體未測；前提、精確命令、能力查詢與實際操作的界線見 [相容性報告](FIRMWARE_COMPATIBILITY_2026-11-25.md)。

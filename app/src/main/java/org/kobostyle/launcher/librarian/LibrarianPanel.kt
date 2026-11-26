@@ -44,9 +44,11 @@ class LibrarianPanel(context: Context, private val action: (DialogueAction, Stri
         body.addView(tools)
         body.addView(text("墨喵 · 你的書房館員", 24f).apply { typeface = Typeface.DEFAULT_BOLD })
         val portrait = resources.configuration.screenHeightDp >= resources.configuration.screenWidthDp
+        val welcomeCard = portrait && state.stage == DialogueStage.WELCOME
         val character = ImageView(context).apply {
             id = R.id.librarian_character
-            setImageResource(expressionResource(state.expression)); scaleType = ImageView.ScaleType.FIT_CENTER
+            setImageResource(if (welcomeCard) R.drawable.cat_welcome_card else expressionResource(state.expression))
+            scaleType = ImageView.ScaleType.FIT_CENTER
             contentDescription = expressionDescription(state.expression)
         }
         val heading = when (state.stage) {
@@ -62,8 +64,11 @@ class LibrarianPanel(context: Context, private val action: (DialogueAction, Stri
             DialogueStage.CONFIRM -> "找到想看的書了！按下「開始閱讀」，我會把它交給裝置上的閱讀器。"
         }
         val introduction = LinearLayout(context).apply { orientation = if (portrait && state.stage == DialogueStage.WELCOME) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        val imageSize = if (portrait && state.stage == DialogueStage.WELCOME) 220 else if (portrait) 120 else 96
-        introduction.addView(character, LinearLayout.LayoutParams(dp(imageSize), dp(imageSize)).apply { if (introduction.orientation == LinearLayout.VERTICAL) gravity = Gravity.CENTER_HORIZONTAL })
+        // Keep the decorated card readable without increasing the previous welcome height.
+        // Compact and landscape views use the text-free square expression assets.
+        val imageWidth = if (welcomeCard) 165 else if (portrait) 120 else 96
+        val imageHeight = if (welcomeCard) 220 else imageWidth
+        introduction.addView(character, LinearLayout.LayoutParams(dp(imageWidth), dp(imageHeight)).apply { if (introduction.orientation == LinearLayout.VERTICAL) gravity = Gravity.CENTER_HORIZONTAL })
         introduction.addView(text(heading), if (introduction.orientation == LinearLayout.VERTICAL) LinearLayout.LayoutParams(-1, -2) else LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
         body.addView(introduction)
         val mode = when (state.result?.source.takeIf { state.stage in setOf(DialogueStage.CARDS, DialogueStage.DETAIL, DialogueStage.CONFIRM) }) {
